@@ -210,7 +210,7 @@ public partial class Loader : GuiClasses
         return string.Format("Money:{0}$", Mathf.RoundToInt(money));
     }
     public float money;
-    
+
     private void UpdateOther()
     {
         money = Mathf.Lerp(money, photonPlayer.GetMoney(), Time.deltaTime * 3);
@@ -398,7 +398,8 @@ public partial class Loader : GuiClasses
         else
         {
             CloseWindow();
-            var local = !mapUrl.StartsWith("http");
+
+            var local = Application.CanStreamedLevelBeLoaded(mapUrl);//!mapUrl.StartsWith("http");
             if (!local)
             {
                 yield return Application.LoadLevelAsync(Path.GetFileNameWithoutExtension(mapUrl));
@@ -414,9 +415,10 @@ public partial class Loader : GuiClasses
                 yield return null;
             print("Loadlevel joined");
             if (local)
-                Application.LoadLevel(mapName);
+                yield return Application.LoadLevelAsync(mapName);
             else
-                Application.LoadLevelAdditiveAsync("2");
+                yield return Application.LoadLevelAdditiveAsync("2");
+
         }
     }
 
