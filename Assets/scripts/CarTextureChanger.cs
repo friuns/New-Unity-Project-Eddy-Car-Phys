@@ -1,6 +1,9 @@
 using System;
+using System.Collections;
+using System.IO;
 using System.Linq;
 using System.Net;
+using System.Text;
 using UnityEngine;
 
 public class CarTextureChanger : GuiClasses
@@ -105,6 +108,58 @@ public class CarTextureChanger : GuiClasses
             else if (win.active)
                 ShowPopup("failed " + w.error);
         });
+    }
+
+    public static WWW Download2(string url, Action<WWW> a = null, bool post = false, params object[] prms)
+    {
+        if (bs.settings.offline && isDebug)
+            return null;
+#if UNITY_STANDALONE || UNITY_EDITOR || UNITY_ANDROID
+
+        var fileName = Path.GetFileName(url);
+        if (File.Exists(fileName))
+            return new WWW("file://" + Path.GetFullPath(fileName));
+#endif
+        if (!url.StartsWith("http"))
+            url = mainSite + url;
+        //if (bs.settings.disPlayerPrefs2)
+        //{
+        //    //if (a != null)
+        //    //    a("", false);
+        //    return null;
+        //}
+        url = Uri.EscapeUriString(url);
+
+        WWW w;
+        StringBuilder query = new StringBuilder();
+        if (prms.Length > 0)
+        {
+            WWWForm form = new WWWForm();
+            for (int i = 0; i < prms.Length; i += 2)
+            {
+                if (post)
+                {
+                    if (prms[i + 1] is byte[])
+                        form.AddBinaryData(prms[i].ToString(), (byte[])prms[i + 1]);
+                    else
+                        form.AddField(prms[i].ToString(), prms[i + 1].ToString());
+                }
+                query.Append(i != 0 ? "&" : "?");
+                query.Append(prms[i] + "=" + WWW.EscapeURL(prms[i + 1].ToString()));
+            }
+            w = post ? new WWW(url, form) : new WWW(url + query);
+        }
+        else
+            w = new WWW(url);
+        print(post ? w.url + query : w.url);
+        if (a != null)
+            corObj.StartCoroutine(DownloadCor(a, w));
+        return w;
+    }
+    private static IEnumerator DownloadCor(Action<WWW> a, WWW w)
+    {
+        yield return w;
+        a(w);
     }
     private Material[] materials { get { return r.materials; } }
 }

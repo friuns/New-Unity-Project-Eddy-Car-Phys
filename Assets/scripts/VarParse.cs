@@ -56,24 +56,21 @@ public class VarParse
 
             if (curValue is IList)
             {
-                if (!isgui || GuiClasses.BeginVertical(fd.Name, false))
+                if (isgui && !GuiClasses.BeginVertical(fd.Name, false)) continue;
+                for (int i = 0; i < (curValue as IList).Count; i++)
                 {
+                    var value = (curValue as IList)[i];
+                    fd.Name = string.Format("{0}[{1}]", fi.Name, i);
 
-                    for (int i = 0; i < (curValue as IList).Count; i++)
+                    if (!isgui || GuiClasses.BeginVertical(fd.Name, false))
                     {
-                        var value = (curValue as IList)[i];
-                        fd.Name = string.Format("{0}[{1}]", fi.Name, i);
-
-                        if (!isgui || GuiClasses.BeginVertical(fd.Name, false))
-                        {
-                            UpdateValues(value, string.Format("{0}/[{1}]", curKey, i), antiloop, fd.recursive ? fd : null, forceSave);
-                            if (isgui)
-                                gui.EndVertical();
-                        }
+                        UpdateValues(value, string.Format("{0}/[{1}]", curKey, i), antiloop, fd.recursive ? fd : null, forceSave);
+                        if (isgui)
+                            gui.EndVertical();
                     }
-                    if (isgui)
-                        gui.EndVertical();
                 }
+                if (isgui)
+                    gui.EndVertical();
             }
             else if (!string.IsNullOrEmpty(fi.FieldType.Namespace))
             {
@@ -100,7 +97,7 @@ public class VarParse
 
                 values[curKey] = curValue;
 
-                if (isgui && !fd.dontDraw && (filter == "" || fd.Name.ToLower().Contains(filter)))
+                if (isgui && (filter == "" || fd.Name.ToLower().Contains(filter)))
                 {
                     var drawValue = DrawValue(curValue, fd);
                     if ((roomInfo == null || PhotonNetwork.isMasterClient) && (pl == null || pl.isLocal))
@@ -110,12 +107,10 @@ public class VarParse
             }
             else if (curValue != null && antiloop.Add(curValue))
             {
-                if (!isgui || GuiClasses.BeginVertical(fd.Name, false))
-                {
-                    UpdateValues(curValue, curKey, antiloop, fd.recursive ? fd : null, forceSave);
-                    if (isgui)
-                        gui.EndVertical();
-                }
+                if (isgui && !GuiClasses.BeginVertical(fd.Name, false)) continue;
+                UpdateValues(curValue, curKey, antiloop, fd.recursive ? fd : null, forceSave);
+                if (isgui)
+                    gui.EndVertical();
             }
         }
         if (isgui)
@@ -143,18 +138,16 @@ public class VarParse
     }
     private static object PlayerPrefGet(object value, string key)
     {
-        if (PlayerPrefs.HasKey(key))
-        {
-            MonoBehaviour.print("Get " + key + ":" + value);
-            if (value is int)
-                value = PlayerPrefs.GetInt(key);
-            else if (value is float)
-                value = PlayerPrefs.GetFloat(key);
-            else if (value is string)
-                value = PlayerPrefs.GetString(key);
-            else if (value is bool)
-                value = PlayerPrefs.GetInt(key) > 0;
-        }
+        if (!PlayerPrefs.HasKey(key)) return value;
+        MonoBehaviour.print("Get " + key + ":" + value);
+        if (value is int)
+            value = PlayerPrefs.GetInt(key);
+        else if (value is float)
+            value = PlayerPrefs.GetFloat(key);
+        else if (value is string)
+            value = PlayerPrefs.GetString(key);
+        else if (value is bool)
+            value = PlayerPrefs.GetInt(key) > 0;
         return value;
     }
     private static void PlayerPrefsSet(string key, object value)
@@ -180,5 +173,4 @@ public class Field : Attribute
     public float right = 100;
     public bool scrollbar;
     public bool ignore;
-    public bool dontDraw;
 }

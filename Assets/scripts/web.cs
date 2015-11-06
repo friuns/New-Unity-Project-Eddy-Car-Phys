@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using LitJson;
 using UnityEngine;
 
 public partial class bs
@@ -17,69 +18,26 @@ public partial class bs
 
     public static MonoBehaviour corObj;
 
-    public static WWW Download2(string url, Action<WWW> a = null, bool post = false, params object[] prms)
-    {
-        if (bs.settings.offline && isDebug)
-            return null;
-#if UNITY_STANDALONE || UNITY_EDITOR || UNITY_ANDROID
 
-        var fileName = Path.GetFileName(url);
-        if (File.Exists(fileName))
-            return new WWW("file://" + Path.GetFullPath(fileName));
-#endif
-        if (!url.StartsWith("http"))
-            url = mainSite + url;
-        //if (bs.settings.disPlayerPrefs2)
-        //{
-        //    //if (a != null)
-        //    //    a("", false);
-        //    return null;
-        //}
-        url = Uri.EscapeUriString(url);
 
-        WWW w;
-        StringBuilder query = new StringBuilder();
-        if (prms.Length > 0)
-        {
-            WWWForm form = new WWWForm();
-            for (int i = 0; i < prms.Length; i += 2)
-            {
-                if (post)
-                {
-                    if (prms[i + 1] is byte[])
-                        form.AddBinaryData(prms[i].ToString(), (byte[])prms[i + 1]);
-                    else
-                        form.AddField(prms[i].ToString(), prms[i + 1].ToString());
-                }
-                query.Append(i != 0 ? "&" : "?");
-                query.Append(prms[i] + "=" + WWW.EscapeURL(prms[i + 1].ToString()));
-            }
-            w = post ? new WWW(url, form) : new WWW(url + query);
-        }
-        else
-            w = new WWW(url);
-        print(post ? w.url + query : w.url);
-        if (a != null)
-            corObj.StartCoroutine(DownloadCor(a, w));
-        return w;
-    }
-    private static IEnumerator DownloadCor(Action<WWW> a, WWW w)
+
+
+    public static WWW Download(string url, params object[] prms)
     {
-        yield return w;
-        a(w);
+        return Download2(url, null, null, false, prms);
     }
 
 
     public static WWW Download(string url, Action<string, bool> a = null, bool post = false, params object[] prms)
     {
+        return Download2(url, a == null ? (Action<WWW>)null : w => a(w.text, true), s => a(s, false), post, prms);
+    }
+
+    public static WWW Download2(string url, Action<WWW> a = null, Action<string> b = null, bool post = false, params object[] prms)
+    {
         if (bs.settings.offline && isDebug)
             return null;
-#if UNITY_STANDALONE || UNITY_EDITOR || UNITY_ANDROID
 
-        var fileName = Path.GetFileName(url);
-        if (File.Exists(fileName))
-            return new WWW("file://" + Path.GetFullPath(fileName));
-#endif
         if (!url.StartsWith("http"))
             url = mainSite + url;
         //if (bs.settings.disPlayerPrefs2)
@@ -101,8 +59,10 @@ public partial class bs
                 {
                     if (prms[i + 1] is byte[])
                         form.AddBinaryData(prms[i].ToString(), (byte[])prms[i + 1]);
-                    else
+                    else if (prms[i + 1] is IConvertible)
                         form.AddField(prms[i].ToString(), prms[i + 1].ToString());
+                    else
+                        form.AddField(prms[i].ToString(), JsonMapper.ToJson(prms[i + 1]));
                 }
                 query.Append(i != 0 ? "&" : "?");
                 query.Append(prms[i] + "=" + WWW.EscapeURL(prms[i + 1].ToString()));
@@ -112,21 +72,25 @@ public partial class bs
         else
             w = new WWW(url);
         print(post ? w.url + query : w.url);
-        if (a != null)
-            corObj.StartCoroutine(DownloadCor(a, w));
+        if (a != null || b != null)
+            corObj.StartCoroutine(DownloadCor(a, b, w));
         return w;
     }
     //private static  string url;
-    private static IEnumerator DownloadCor(Action<string, bool> a, WWW w)
+    private static IEnumerator DownloadCor(Action<WWW> a, Action<string> b, WWW w)
     {
         yield return w;
-        string trim;
-        if (String.IsNullOrEmpty(w.error) && !((trim = w.text.Trim()).StartsWith("<") && trim.EndsWith(">")))
-            a(w.text, true);
+        if (String.IsNullOrEmpty(w.error) && !w.text.TrimEnd().EndsWith("error>"))
+        {
+            if (a != null)
+                a(w);
+        }
         else
         {
-            a(w.error == null ? "Failed to Parse" + w.text : w.error, false);
-            Debug.LogWarning(w.error + w.text + "\n" + w.url);
+            var s = w.error == null ? "Failed to Parse\n" + w.text : w.text + w.error;
+            if (b != null)
+                b(s);
+            Debug.LogError(s + "\n" + w.url);
         }
     }
 

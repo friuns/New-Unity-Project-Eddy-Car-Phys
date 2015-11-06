@@ -105,8 +105,6 @@ public partial class Loader : GuiClasses
 
     public void Start()
     {
-
-        //Download(mainSite + "scripts/count.php", null, false, "submit", platformPrefix + setting.version + "/" + group + "/" + name);
         if (!settings.fastLoad)
         {
             InitUrl();
@@ -418,7 +416,12 @@ public partial class Loader : GuiClasses
                 yield return Application.LoadLevelAsync(mapName);
             else
                 yield return Application.LoadLevelAdditiveAsync("2");
-
+            if (maps.All(a => a.mapUrl != room.sets.mapStats.mapUrl))
+            {
+                maps.Add(room.sets.mapStats);
+                settings.SetDirty();
+            }
+            Download("mapAdd.php", "mapStats", room.sets.mapStats);
         }
     }
 

@@ -229,8 +229,9 @@ public class Gts
 public class MapStat
 {
     public int mapId;
-    public string mapName;
-    public string mapUrl;
+    public string mapName = "mp";
+    public string mapUrl = "mp";
+    [Field(ignore = true)]
     public bool newMap;
 
 }
