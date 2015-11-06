@@ -12,7 +12,15 @@ public enum AccType { Guest, User, Mod, Dev }
 [Field(recursive = true, save = true)]
 public class PlayerStats
 {
-    public Gts[] games = new Gts[10].Fill(() => new Gts());
+    public Gts[] games = new Gts[Enum.GetValues(typeof(GameTypeEnum)).Length];
+    public Gts pursuitRace, pursuit, DeathMatch, TDM;
+    public PlayerStats()
+    {
+        pursuit = games[(int)GameTypeEnum.pursuit] = new Gts();
+        pursuitRace = games[(int)GameTypeEnum.pursuitRace] = new Gts();
+        DeathMatch = games[(int)GameTypeEnum.DeathMatch] = new Gts();
+        TDM = games[(int)GameTypeEnum.TDM] = new Gts();
+    }
     [Field(save = false)]
     public Gts curGame = new Gts();
     public int moneyFound;
@@ -45,7 +53,6 @@ public partial class PhotonPlayer
     public Gts curGame { get { return stats.curGame; } }
     public void Update()
     {
-        varParse.UpdateValues();
         if (propertiesToSet.Count > 0)
         {
             SetCustomProperties(propertiesToSet);

@@ -4,7 +4,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Text;
 using ExitGames.Client.Photon.Lite;
 using UnityEditor;
 using UnityEngine;
@@ -12,37 +11,32 @@ using UnityEngine;
 [Field(ignore = true)]
 public class VarParse
 {
-    private const string Slash = "/";
-    public Dictionary<StringBuilder, object> values = new Dictionary<StringBuilder, object>();
     public PhotonPlayer pl;
     public RoomInfo roomInfo;
     public string filter = "";
-    //public VarParse(object o)
-    //{
-    //    if (o is PhotonPlayer)
-    //        pl = o as PhotonPlayer;
-    //    if (o is RoomInfo)
-    //        roomInfo = o as RoomInfo;
-    //    root = o;
-    //}
+
+
+    VarCache[] values = new VarCache[999];
+
     public object root;
+    public string name="";
     public void UpdateValues()
     {
-        UpdateValues(root);
+        id = 0;
+        UpdateValues(root,name);
     }
-
-    
-    public void UpdateValues(object obs, StringBuilder key = null, HashSet<object> antiloop = null, Field oldf = null, bool forceSave = false)
+    public int id;
+    private Dictionary<string, SuperVar> superVars = new Dictionary<string, SuperVar>();
+    private void UpdateValues(object obs, string key = "", HashSet<object> antiloop = null, Field oldf = null)
     {
         var isgui = Event.current != null;
         if (isgui)
             GuiClasses.Indent();
-        StringBuilder curKey;
+
+
 
         if (antiloop == null)
             antiloop = new HashSet<object>();
-        if (key == null)
-            key = new StringBuilder();
 
         const BindingFlags flags = BindingFlags.Public | BindingFlags.Instance;
 
@@ -51,61 +45,46 @@ public class VarParse
         foreach (FieldInfo fi in obsType.GetFields(flags))
         {
 
-            var fd = (Field)fi.GetCustomAttributes(true).Union(obsType.GetCustomAttributes(true)).FirstOrDefault(b => b is Field) ?? oldf;
+            id++;
+            if (values[id] == null)
+            {
+                var fd2 = (Field)fi.GetCustomAttributes(true).Union(obsType.GetCustomAttributes(true)).FirstOrDefault(b => b is Field) ?? oldf;
+                values[id] = new VarCache { fd = fd2, curKey = key + "/" + fi.Name };
+            }
+
+            var fd = values[id].fd;
             if (fd == null || fd.ignore) continue;
             if (fd.Name == null || Equals(fd, oldf)) fd.Name = fi.Name;
 
+            var curKey = values[id].curKey;
             var curValue = fi.GetValue(obs);
 
-            curKey = key.Append(Slash).Append(fi.Name);
-
-
-            if (curValue is IList)
+            var superVar = curValue as SuperVar;
+            if (superVar != null)
             {
-                if (!isgui || GuiClasses.BeginVertical(fd.Name, false))
-                {
-
-                    for (int i = 0; i < (curValue as IList).Count; i++)
-                    {
-                        var value = (curValue as IList)[i];
-                        fd.Name = string.Format("{0}[{1}]", fi.Name, i);
-
-                        if (!isgui || GuiClasses.BeginVertical(fd.Name, false))
-                        {
-
-                            UpdateValues(value, curKey.Append(Slash).Append(i), antiloop, fd.recursive ? fd : null, forceSave);
-                            if (isgui)
-                                gui.EndVertical();
-                        }
-                    }
-                    if (isgui)
-                        gui.EndVertical();
-                }
+                superVar.cache = values[id];
+                superVars[curKey] = superVar;
             }
-            else if (!string.IsNullOrEmpty(fi.FieldType.Namespace))
-            {
-                object o;
-                var save = fd.save && (pl == null || pl.isLocal) && (bs.room == null || PhotonNetwork.isMasterClient);
-                if (values.TryGetValue(curKey, out o))
-                {
-                    if (forceSave || !Equals(o, curValue))
-                    {
-                        if (pl != null)
-                            pl.Set(curKey.ToString(), curValue);
-                        if (roomInfo != null)
-                            roomInfo.Set(curKey.ToString(), curValue);
-                        if (save)
-                            PlayerPrefsSet(curKey.ToString(), curValue);
-                    }
-                }
-                else if (save)
-                    curValue = PlayerPrefGet(curValue, curKey.ToString());
-                if (pl != null)
-                    pl.customProperties.TryGetValue2(curKey.ToString(), ref curValue);
-                if (roomInfo != null)
-                    roomInfo.customProperties.TryGetValue2(curKey.ToString(), ref curValue);
 
-                values[curKey] = curValue;
+            if (!string.IsNullOrEmpty(fi.FieldType.Namespace))
+            {
+                object o = values[id].value;
+                fd.save2 = fd.save && (pl == null || pl.isLocal) && (bs.room == null || PhotonNetwork.isMasterClient);
+
+                if (values[id].isSet)
+                {
+                    if (!Equals(o, curValue))
+                        OnValueSet(curKey, curValue, fd);
+                }
+                else if (fd.save2)
+                    curValue = PlayerPrefGet(curValue, curKey);
+                if (pl != null)
+                    pl.customProperties.TryGetValue2(curKey, ref curValue);
+                if (roomInfo != null)
+                    roomInfo.customProperties.TryGetValue2(curKey, ref curValue);
+
+                values[id].value = curValue;
+                values[id].isSet = true;
 
                 if (isgui && !fd.dontDraw && (filter == "" || fd.Name.ToLower().Contains(filter)))
                 {
@@ -117,17 +96,33 @@ public class VarParse
             }
             else if (curValue != null && antiloop.Add(curValue))
             {
-                if (!isgui || GuiClasses.BeginVertical(fd.Name, false))
-                {
-                    UpdateValues(curValue, curKey, antiloop, fd.recursive ? fd : null, forceSave);
-                    if (isgui)
-                        gui.EndVertical();
-                }
+                if (isgui && !GuiClasses.BeginVertical(fd.Name, false)) continue;
+                UpdateValues(curValue, curKey, antiloop, fd.recursive ? fd : null);
+                if (isgui)
+                    gui.EndVertical();
             }
         }
         if (isgui)
             GuiClasses.UnIndent();
     }
+    public void OnValueSet(string curKey, object curValue, Field fd)
+    {
+        if (pl != null)
+            pl.Set(curKey, curValue);
+        if (roomInfo != null)
+            roomInfo.Set(curKey, curValue);
+        if (fd.save2)
+            PlayerPrefsSet(curKey, curValue);
+    }
+
+    public void OnVariableChanged(string s, int value)
+    {
+        SuperVar v;
+        if (superVars.TryGetValue(s, out v))
+            v.m_value = value;
+    }
+
+
     public static object DrawValue(object v, Field a)
     {
         var name = a.Name;
@@ -150,18 +145,16 @@ public class VarParse
     }
     private static object PlayerPrefGet(object value, string key)
     {
-        if (PlayerPrefs.HasKey(key))
-        {
-            MonoBehaviour.print("Get " + key + ":" + value);
-            if (value is int)
-                value = PlayerPrefs.GetInt(key);
-            else if (value is float)
-                value = PlayerPrefs.GetFloat(key);
-            else if (value is string)
-                value = PlayerPrefs.GetString(key);
-            else if (value is bool)
-                value = PlayerPrefs.GetInt(key) > 0;
-        }
+        if (!PlayerPrefs.HasKey(key)) return value;
+        MonoBehaviour.print("Get " + key + ":" + value);
+        if (value is int)
+            value = PlayerPrefs.GetInt(key);
+        else if (value is float)
+            value = PlayerPrefs.GetFloat(key);
+        else if (value is string)
+            value = PlayerPrefs.GetString(key);
+        else if (value is bool)
+            value = PlayerPrefs.GetInt(key) > 0;
         return value;
     }
     private static void PlayerPrefsSet(string key, object value)
@@ -188,4 +181,13 @@ public class Field : Attribute
     public bool scrollbar;
     public bool ignore;
     public bool dontDraw;
+    public bool save2;
+}
+
+public class VarCache
+{
+    public Field fd;
+    public object value;
+    public bool isSet;
+    public string curKey;
 }

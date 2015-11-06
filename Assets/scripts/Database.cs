@@ -149,14 +149,32 @@ public enum LeadState
 
 public class web : bs { }
 
+public class SuperVar
+{
+    //public string path;
+    internal VarCache cache;
+    internal VarParse varparse;
+    public int value
+    {
+        get
+        {
+            return m_value;
+        }
+        set
+        {
+            varparse.OnValueSet(cache.curKey, value, cache.fd);
+            m_value = value;
+        }
+    }
+    private int m_value;
 
-public class Score
+}
+public class Score : SuperVar
 {
     public string name;
     public int points;//{ get { return m_points; } set { m_points = value; } }
     public int pointsValue { get { return points * value; } }
     //private int m_points;
-    public int value;
     public Score(int Points)
     {
         points = Points;
@@ -171,6 +189,7 @@ public class Score
 public class Gts
 {
     internal List<Score> scores = new List<Score>();
+    //public GameTypeEnum gameType;
     public Score kills = new Score(3);
     public Score deaths;
     public int timePlayed;

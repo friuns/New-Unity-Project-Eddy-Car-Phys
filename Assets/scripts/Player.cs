@@ -85,9 +85,9 @@ public partial class Player : bsNetwork
 #endif
         //if (bot)
         //    StartCoroutine(StartBot3());
-
+        owner.varParse.UpdateValues();
     }
-    public VarParse varParse { get { return m_varParse ?? (m_varParse = new VarParse() { pl = owner }); } set { m_varParse = value; } }
+    public VarParse varParse { get { return m_varParse ?? (m_varParse = new VarParse() { pl = owner, root = m_Car}); } set { m_varParse = value; } }
     private VarParse m_varParse;
 
     private AudioSource InitSound(AudioClip audioClip, bool play = true)

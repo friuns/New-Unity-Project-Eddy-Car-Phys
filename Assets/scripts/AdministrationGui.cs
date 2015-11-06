@@ -112,7 +112,7 @@ public partial class Administration
         {
             win.windowSkin = settings.unitySkin;
             room.varParse.filter = GuiClasses.TextField("Search:", _Player.varParse.filter);
-            room.varParse.UpdateValues(_Player.m_Car, new StringBuilder("CarPhys"));
+            room.varParse.UpdateValues();
         });
         //room.Set("dsad","sdads");
     }
