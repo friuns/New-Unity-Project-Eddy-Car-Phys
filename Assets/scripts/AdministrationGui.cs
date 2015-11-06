@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
@@ -111,7 +112,7 @@ public partial class Administration
         {
             win.windowSkin = settings.unitySkin;
             room.varParse.filter = GuiClasses.TextField("Search:", _Player.varParse.filter);
-            room.varParse.UpdateValues(_Player.m_Car, "CarPhys");
+            room.varParse.UpdateValues(_Player.m_Car, new StringBuilder("CarPhys"));
         });
         //room.Set("dsad","sdads");
     }

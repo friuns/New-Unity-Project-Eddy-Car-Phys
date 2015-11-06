@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using ExitGames.Client.Photon.Lite;
 using UnityEditor;
 using UnityEngine;
@@ -11,7 +12,8 @@ using UnityEngine;
 [Field(ignore = true)]
 public class VarParse
 {
-    public Dictionary<string, object> values = new Dictionary<string, object>();
+    private const string Slash = "/";
+    public Dictionary<StringBuilder, object> values = new Dictionary<StringBuilder, object>();
     public PhotonPlayer pl;
     public RoomInfo roomInfo;
     public string filter = "";
@@ -28,15 +30,19 @@ public class VarParse
     {
         UpdateValues(root);
     }
-    public void UpdateValues(object obs, string key = "", HashSet<object> antiloop = null, Field oldf = null, bool forceSave = false)
+
+    
+    public void UpdateValues(object obs, StringBuilder key = null, HashSet<object> antiloop = null, Field oldf = null, bool forceSave = false)
     {
         var isgui = Event.current != null;
         if (isgui)
             GuiClasses.Indent();
-        string curKey;
+        StringBuilder curKey;
 
         if (antiloop == null)
             antiloop = new HashSet<object>();
+        if (key == null)
+            key = new StringBuilder();
 
         const BindingFlags flags = BindingFlags.Public | BindingFlags.Instance;
 
@@ -51,26 +57,30 @@ public class VarParse
 
             var curValue = fi.GetValue(obs);
 
-            curKey = key + "/" + fi.Name;
+            curKey = key.Append(Slash).Append(fi.Name);
 
 
             if (curValue is IList)
             {
-                if (isgui && !GuiClasses.BeginVertical(fd.Name, false)) continue;
-                for (int i = 0; i < (curValue as IList).Count; i++)
+                if (!isgui || GuiClasses.BeginVertical(fd.Name, false))
                 {
-                    var value = (curValue as IList)[i];
-                    fd.Name = string.Format("{0}[{1}]", fi.Name, i);
 
-                    if (!isgui || GuiClasses.BeginVertical(fd.Name, false))
+                    for (int i = 0; i < (curValue as IList).Count; i++)
                     {
-                        UpdateValues(value, string.Format("{0}/[{1}]", curKey, i), antiloop, fd.recursive ? fd : null, forceSave);
-                        if (isgui)
-                            gui.EndVertical();
+                        var value = (curValue as IList)[i];
+                        fd.Name = string.Format("{0}[{1}]", fi.Name, i);
+
+                        if (!isgui || GuiClasses.BeginVertical(fd.Name, false))
+                        {
+
+                            UpdateValues(value, curKey.Append(Slash).Append(i), antiloop, fd.recursive ? fd : null, forceSave);
+                            if (isgui)
+                                gui.EndVertical();
+                        }
                     }
+                    if (isgui)
+                        gui.EndVertical();
                 }
-                if (isgui)
-                    gui.EndVertical();
             }
             else if (!string.IsNullOrEmpty(fi.FieldType.Namespace))
             {
@@ -81,23 +91,23 @@ public class VarParse
                     if (forceSave || !Equals(o, curValue))
                     {
                         if (pl != null)
-                            pl.Set(curKey, curValue);
+                            pl.Set(curKey.ToString(), curValue);
                         if (roomInfo != null)
-                            roomInfo.Set(curKey, curValue);
+                            roomInfo.Set(curKey.ToString(), curValue);
                         if (save)
-                            PlayerPrefsSet(curKey, curValue);
+                            PlayerPrefsSet(curKey.ToString(), curValue);
                     }
                 }
                 else if (save)
-                    curValue = PlayerPrefGet(curValue, curKey);
+                    curValue = PlayerPrefGet(curValue, curKey.ToString());
                 if (pl != null)
-                    pl.customProperties.TryGetValue2(curKey, ref curValue);
+                    pl.customProperties.TryGetValue2(curKey.ToString(), ref curValue);
                 if (roomInfo != null)
-                    roomInfo.customProperties.TryGetValue2(curKey, ref curValue);
+                    roomInfo.customProperties.TryGetValue2(curKey.ToString(), ref curValue);
 
                 values[curKey] = curValue;
 
-                if (isgui && (filter == "" || fd.Name.ToLower().Contains(filter)))
+                if (isgui && !fd.dontDraw && (filter == "" || fd.Name.ToLower().Contains(filter)))
                 {
                     var drawValue = DrawValue(curValue, fd);
                     if ((roomInfo == null || PhotonNetwork.isMasterClient) && (pl == null || pl.isLocal))
@@ -107,10 +117,12 @@ public class VarParse
             }
             else if (curValue != null && antiloop.Add(curValue))
             {
-                if (isgui && !GuiClasses.BeginVertical(fd.Name, false)) continue;
-                UpdateValues(curValue, curKey, antiloop, fd.recursive ? fd : null, forceSave);
-                if (isgui)
-                    gui.EndVertical();
+                if (!isgui || GuiClasses.BeginVertical(fd.Name, false))
+                {
+                    UpdateValues(curValue, curKey, antiloop, fd.recursive ? fd : null, forceSave);
+                    if (isgui)
+                        gui.EndVertical();
+                }
             }
         }
         if (isgui)
@@ -138,16 +150,18 @@ public class VarParse
     }
     private static object PlayerPrefGet(object value, string key)
     {
-        if (!PlayerPrefs.HasKey(key)) return value;
-        MonoBehaviour.print("Get " + key + ":" + value);
-        if (value is int)
-            value = PlayerPrefs.GetInt(key);
-        else if (value is float)
-            value = PlayerPrefs.GetFloat(key);
-        else if (value is string)
-            value = PlayerPrefs.GetString(key);
-        else if (value is bool)
-            value = PlayerPrefs.GetInt(key) > 0;
+        if (PlayerPrefs.HasKey(key))
+        {
+            MonoBehaviour.print("Get " + key + ":" + value);
+            if (value is int)
+                value = PlayerPrefs.GetInt(key);
+            else if (value is float)
+                value = PlayerPrefs.GetFloat(key);
+            else if (value is string)
+                value = PlayerPrefs.GetString(key);
+            else if (value is bool)
+                value = PlayerPrefs.GetInt(key) > 0;
+        }
         return value;
     }
     private static void PlayerPrefsSet(string key, object value)
@@ -173,4 +187,5 @@ public class Field : Attribute
     public float right = 100;
     public bool scrollbar;
     public bool ignore;
+    public bool dontDraw;
 }
