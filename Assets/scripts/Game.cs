@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using ExitGames.Client.Photon;
 using UnityEngine;
 using gui = UnityEngine.GUILayout;
 using Random = UnityEngine.Random;
@@ -216,7 +217,7 @@ public partial class Game : GuiClasses
                     photonPlayer.curGame.teamWon.value++;
                     _Hud.centerText(teamWin + " Win!\nPrice:" + _Hud.MoneyDif + "$");
                     if (isMaster)
-                        CallRPC(SetTeamScore, (int) teamWin.team, teamWin.score + 1);
+                        CallRPC(SetTeamScore, (int)teamWin.team, teamWin.score + 1);
                 }
                 else if (playerWin != null)
                 {
@@ -312,7 +313,11 @@ public partial class Game : GuiClasses
     }
     public void OnPhotonPlayerPropertiesChanged(object[] playerAndUpdatedProps)
     {
-        ((PhotonPlayer)playerAndUpdatedProps[0]).varParse.UpdateValues();
+        var hash = playerAndUpdatedProps[1] as Hashtable;
+        foreach (var a in hash)
+        {
+            VarParse.OnValueRead((string)a.Key, a.Value);
+        }
     }
     public void OnPhotonCustomRoomPropertiesChanged()
     {

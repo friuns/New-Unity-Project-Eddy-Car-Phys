@@ -19,15 +19,15 @@ public class VarParse
     VarCache[] values = new VarCache[999];
 
     public object root;
-    public string name="";
+    public string name = "";
     public void UpdateValues()
     {
         id = 0;
-        UpdateValues(root,name);
+        UpdateValues(root, name);
     }
     public int id;
-    private Dictionary<string, SuperVar> superVars = new Dictionary<string, SuperVar>();
-    private void UpdateValues(object obs, string key = "", HashSet<object> antiloop = null, Field oldf = null)
+    private static Dictionary<string, VarCache> superVars = new Dictionary<string, VarCache>();
+    private void UpdateValues(object obs, string key = "", HashSet<object> antiloop = null, Field oldAtr = null)
     {
         var isgui = Event.current != null;
         if (isgui)
@@ -46,49 +46,45 @@ public class VarParse
         {
 
             id++;
-            if (values[id] == null)
+            var varCache = values[id];
+            if (varCache == null)
             {
-                var fd2 = (Field)fi.GetCustomAttributes(true).Union(obsType.GetCustomAttributes(true)).FirstOrDefault(b => b is Field) ?? oldf;
-                values[id] = new VarCache { fd = fd2, curKey = key + "/" + fi.Name };
+                var atr2 = (Field)fi.GetCustomAttributes(true).Union(obsType.GetCustomAttributes(true)).FirstOrDefault(b => b is Field) ?? oldAtr;
+                varCache = values[id] = new VarCache { atr = atr2, curKey = key + "/" + fi.Name, fi = fi, obs = obs };
+                superVars[varCache.curKey] = varCache;
             }
 
-            var fd = values[id].fd;
-            if (fd == null || fd.ignore) continue;
-            if (fd.Name == null || Equals(fd, oldf)) fd.Name = fi.Name;
+            var atr = varCache.atr;
+            if (atr == null || atr.ignore) continue;
+            if (atr.Name == null || Equals(atr, oldAtr)) atr.Name = fi.Name;
 
-            var curKey = values[id].curKey;
+            var curKey = varCache.curKey;
             var curValue = fi.GetValue(obs);
 
-            var superVar = curValue as SuperVar;
-            if (superVar != null)
-            {
-                superVar.cache = values[id];
-                superVars[curKey] = superVar;
-            }
+
 
             if (!string.IsNullOrEmpty(fi.FieldType.Namespace))
             {
-                object o = values[id].value;
-                fd.save2 = fd.save && (pl == null || pl.isLocal) && (bs.room == null || PhotonNetwork.isMasterClient);
+                atr.save2 = atr.save && (pl == null || pl.isLocal) && (bs.room == null || PhotonNetwork.isMasterClient);
 
-                if (values[id].isSet)
+                if (varCache.isSet)
                 {
-                    if (!Equals(o, curValue))
-                        OnValueSet(curKey, curValue, fd);
+                    if (!Equals(varCache.value, curValue))
+                        OnValueSet(curKey, curValue, atr.save2);
                 }
-                else if (fd.save2)
+                else if (atr.save2)
                     curValue = PlayerPrefGet(curValue, curKey);
                 if (pl != null)
                     pl.customProperties.TryGetValue2(curKey, ref curValue);
                 if (roomInfo != null)
                     roomInfo.customProperties.TryGetValue2(curKey, ref curValue);
 
-                values[id].value = curValue;
-                values[id].isSet = true;
+                varCache.value = curValue;
+                varCache.isSet = true;
 
-                if (isgui && !fd.dontDraw && (filter == "" || fd.Name.ToLower().Contains(filter)))
+                if (isgui && !atr.dontDraw && (filter == "" || atr.Name.ToLower().Contains(filter)))
                 {
-                    var drawValue = DrawValue(curValue, fd);
+                    var drawValue = DrawValue(curValue, atr);
                     if ((roomInfo == null || PhotonNetwork.isMasterClient) && (pl == null || pl.isLocal))
                         curValue = drawValue;
                 }
@@ -96,8 +92,8 @@ public class VarParse
             }
             else if (curValue != null && antiloop.Add(curValue))
             {
-                if (isgui && !GuiClasses.BeginVertical(fd.Name, false)) continue;
-                UpdateValues(curValue, curKey, antiloop, fd.recursive ? fd : null);
+                if (isgui && !GuiClasses.BeginVertical(atr.Name, false)) continue;
+                UpdateValues(curValue, curKey, antiloop, atr.recursive ? atr : null);
                 if (isgui)
                     gui.EndVertical();
             }
@@ -105,21 +101,21 @@ public class VarParse
         if (isgui)
             GuiClasses.UnIndent();
     }
-    public void OnValueSet(string curKey, object curValue, Field fd)
+    public void OnValueSet(string curKey, object curValue, bool save)
     {
         if (pl != null)
             pl.Set(curKey, curValue);
         if (roomInfo != null)
             roomInfo.Set(curKey, curValue);
-        if (fd.save2)
+        if (save)
             PlayerPrefsSet(curKey, curValue);
     }
 
-    public void OnVariableChanged(string s, int value)
+    public static void OnValueRead(string s, object value)
     {
-        SuperVar v;
+        VarCache v;
         if (superVars.TryGetValue(s, out v))
-            v.m_value = value;
+            v.fi.SetValue(v.obs, v.value = value);
     }
 
 
@@ -186,7 +182,9 @@ public class Field : Attribute
 
 public class VarCache
 {
-    public Field fd;
+    public object obs;
+    public Field atr;
+    public FieldInfo fi;
     public object value;
     public bool isSet;
     public string curKey;

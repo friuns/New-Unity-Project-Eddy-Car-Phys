@@ -162,11 +162,11 @@ public class SuperVar
         }
         set
         {
-            varparse.OnValueSet(cache.curKey, value, cache.fd);
+            varparse.OnValueSet(cache.curKey + "/m_value", value, cache.atr.save2);
             m_value = value;
         }
     }
-    private int m_value;
+    public int m_value;
 
 }
 public class Score : SuperVar
