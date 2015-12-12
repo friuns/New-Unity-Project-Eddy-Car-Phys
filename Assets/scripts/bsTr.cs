@@ -71,8 +71,8 @@ public partial class bs
         if (Application.isEditor ? settings.disableTranslate : curDict == 0)
             return;
         Profiler.BeginSample("LoadTranslate");
-        //LoadDict(setting.assetDictionaries[0]);
-        LoadDict(assetDictionary);
+        //LoadDict(setting.translations[0]);
+        LoadDict(translations);
         Profiler.EndSample();
     }
     private static void LoadDict(TextAsset AssetDictionary)
@@ -95,7 +95,7 @@ public partial class bs
         }
     }
     private static Dictionary<string, string> tooltips = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-    public static TextAsset assetDictionary { get { return settings.assetDictionaries[Mathf.Max(0, curDict)]; } }
+    public static TextAsset translations { get { return settings.translations[Mathf.Max(0, curDict)]; } }
     protected static int curDict
     {
         get

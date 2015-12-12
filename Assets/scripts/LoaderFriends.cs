@@ -70,7 +70,7 @@ public partial class Loader
     }
     public void RefreshFriends()
     {
-        if (PhotonNetwork.connectionStateDetailed == PeerState.JoinedLobby)
+        if (PhotonNetwork.connectionStateDetailed == PeerState.JoinedLobby && _Loader.friends.Count > 0)
             PhotonNetwork.FindFriends(bs._Loader.friends.ToArray());
     }
     public void FriendWindow(FriendInfo f)

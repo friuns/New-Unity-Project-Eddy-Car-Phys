@@ -5,35 +5,32 @@ using System.IO;
 using System.Text;
 using LitJson;
 using UnityEngine;
-
+public class web : bs { }
 public partial class bs
 {
-    private const string m_mainSite = "://tmrace.net/cops/";
+    private const string m_mainSite = "//tmrace.net/cops/";
     internal static string mainSite { get { return http + m_mainSite; } }
     internal static string http
     {
-        get { return (Application.absoluteURL == null || !Application.absoluteURL.ToLower().StartsWith("https") ? "http" : "https"); }
+        get { return (Application.absoluteURL == null || !Application.absoluteURL.ToLower().StartsWith("https") ? "http:" : "https:"); }
     }
 
+    public static bool isHttps { get { return Application.absoluteURL.ToLower().StartsWith("https"); } }
 
     public static MonoBehaviour corObj;
 
+    //public static WWW Download(string url, params object[] prms)
+    //{
+    //    return Download(url, null, null, false, prms);
+    //}
 
 
+    //public static WWW Download(string url, Action<string, bool> a = null, bool post = false, params object[] prms)
+    //{
+    //    return Download2(url, a == null ? (Action<WWW>)null : w => a(w.text, true), a == null ? (Action<string>)null : s => a(s, false), post, prms);
+    //}
 
-
-    public static WWW Download(string url, params object[] prms)
-    {
-        return Download2(url, null, null, false, prms);
-    }
-
-
-    public static WWW Download(string url, Action<string, bool> a = null, bool post = false, params object[] prms)
-    {
-        return Download2(url, a == null ? (Action<WWW>)null : w => a(w.text, true), s => a(s, false), post, prms);
-    }
-
-    public static WWW Download2(string url, Action<WWW> a = null, Action<string> b = null, bool post = false, params object[] prms)
+    public static WWW Download(string url, Action<WWW> a = null, Action<string> b = null, bool post = false, params object[] prms)
     {
         if (bs.settings.offline && isDebug)
             return null;
@@ -59,10 +56,11 @@ public partial class bs
                 {
                     if (prms[i + 1] is byte[])
                         form.AddBinaryData(prms[i].ToString(), (byte[])prms[i + 1]);
-                    else if (prms[i + 1] is IConvertible)
-                        form.AddField(prms[i].ToString(), prms[i + 1].ToString());
+                    //else if (prms[i + 1] is IConvertible)
                     else
-                        form.AddField(prms[i].ToString(), JsonMapper.ToJson(prms[i + 1]));
+                        form.AddField(prms[i].ToString(), prms[i + 1].ToString());
+                    //else
+                    //    form.AddField(prms[i].ToString(), JsonMapper.ToJson(prms[i + 1]));
                 }
                 query.Append(i != 0 ? "&" : "?");
                 query.Append(prms[i] + "=" + WWW.EscapeURL(prms[i + 1].ToString()));
@@ -71,26 +69,29 @@ public partial class bs
         }
         else
             w = new WWW(url);
-        print(post ? w.url + query : w.url);
-        if (a != null || b != null)
-            corObj.StartCoroutine(DownloadCor(a, b, w));
+
+        corObj.StartCoroutine(DownloadCor(a, b, w, UnityEngine.StackTraceUtility.ExtractStackTrace()));
+
         return w;
     }
     //private static  string url;
-    private static IEnumerator DownloadCor(Action<WWW> a, Action<string> b, WWW w)
+    private static IEnumerator DownloadCor(Action<WWW> a, Action<string> b, WWW w, string stack)
     {
+
         yield return w;
-        if (String.IsNullOrEmpty(w.error) && !w.text.TrimEnd().EndsWith("error>"))
+        string text;
+        if (string.IsNullOrEmpty(w.error) && (text = w.url.EndsWith(".jpg") ? "" : w.text.Trim()) == text.Trim('<', '>'))
         {
+            Debug.Log(w.url + "\n\n" + text + "\n\n" + stack);
             if (a != null)
                 a(w);
         }
         else
         {
-            var s = w.error == null ? "Failed to Parse\n" + w.text : w.text + w.error;
+            var s = w.error ?? "Failed to Parse\n" + w.text;
             if (b != null)
                 b(s);
-            Debug.LogError(s + "\n" + w.url);
+            Debug.LogError(w.url + "\n" + s + "\n" + stack);
         }
     }
 
@@ -100,7 +101,7 @@ public partial class bs
         if (!eventsCommited.Contains(name))
         {
             var prms = gr == "Site" ? gr + "/" + platformPrefix + "/" + name : platformPrefix + bs.settings.version + "/" + gr + "/" + name;
-            Download(mainSite + "scripts/count.php", null, false, "submit", prms);
+            Download(mainSite + "scripts/count.php", null, null, false, "submit", prms);
             eventsCommited.Add(name);
         }
         //GA.API.Design.NewEvent(String.Format("{0}:{1}", @group, name.Replace(':', ' ')));
@@ -127,5 +128,6 @@ public enum EventGroup
     GameType,
     LevelEditor,
     Debug,
-    Shop
+    Shop,
+    Ban
 }

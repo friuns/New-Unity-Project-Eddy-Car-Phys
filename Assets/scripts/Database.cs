@@ -147,13 +147,12 @@ public enum LeadState
     Taken
 }
 
-public class web : bs { }
 
 public class SuperVar
 {
     //public string path;
-    internal VarCache cache;
-    internal VarParse varparse;
+    internal FieldCache cache;
+    //internal VarParse varparse;
     public int value
     {
         get
@@ -162,8 +161,11 @@ public class SuperVar
         }
         set
         {
-            varparse.OnValueSet(cache.curKey + "/m_value", value, cache.atr.save2);
-            m_value = value;
+            if (m_value != value)
+            {
+                //VarParse.fieldDict[cache.curKey + "/m_value"].OnValueChanged(value, cache.atr.save2);
+                m_value = value;
+            }
         }
     }
     public int m_value;
@@ -171,8 +173,8 @@ public class SuperVar
 }
 public class Score : SuperVar
 {
-    public string name;
-    public int points;//{ get { return m_points; } set { m_points = value; } }
+    internal string name;
+    internal int points;//{ get { return m_points; } set { m_points = value; } }
     public int pointsValue { get { return points * value; } }
     //private int m_points;
     public Score(int Points)
@@ -243,14 +245,4 @@ public class Gts
         for (int i = 0; i < scores.Count; i++)
             scores[i].value += g.scores[i].value;
     }
-}
-[Serializable]
-public class MapStat
-{
-    public int mapId;
-    public string mapName = "mp";
-    public string mapUrl = "mp";
-    [Field(ignore = true)]
-    public bool newMap;
-
 }

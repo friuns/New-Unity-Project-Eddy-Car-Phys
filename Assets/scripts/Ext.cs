@@ -3,10 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 public static class ext
 {
-    
+
     public static void GetFields<T>(this object th, Action<string, T> act)
     {
         var type = th.GetType();
@@ -90,28 +91,32 @@ public static class ext
     //}
     public static void Block(string s = "")
     {
-        Application.ExternalEval("window.top.location = '" + Loader.redirectUrl + "';");
-        foreach (var a in GameObject.FindObjectsOfType<GameObject>().Where(a => a.transform.root == a.transform))
-            GameObject.Destroy(a);
-        Application.OpenURL(Loader.redirectUrl);
-        GameObject gameObject = new GameObject();
-        GUIText addComponent = gameObject.AddComponent<GUIText>();
-        addComponent.transform.position = Vector3.one / 2;
-        addComponent.anchor = TextAnchor.MiddleCenter;
-        addComponent.text = string.Format(Loader.redirectText, Loader.redirectUrl);
-        gameObject.AddComponent<Camera>();
-        gameObject.AddComponent<GUILayer>();
-        web.corObj = gameObject.AddComponent<MonoBehaviour>();
-        if (SecureInt.detected)
+
+        if (SecureInt.detected || !string.IsNullOrEmpty(FieldCache.hackDetected))
         {
             if (!string.IsNullOrEmpty(bs.deviceUniqueIdentifier))
             {
-                web.Download("scripts/submitId.php", delegate { }, false, "id", bs.deviceUniqueIdentifier, "msg", SecureInt.detectedText);
+                web.Download("report.php", null, null, false, "id", bs.deviceUniqueIdentifier, "msg", SecureInt.detectedText);
+                var pl = bs._Player;
+                web.Download("scripts/report.php", Debug.Log, Debug.LogWarning, false, new object[] { "ip", pl.owner.ip, "devid", pl.owner.deviceId, "plname", pl.owner.name, "version", bs.settings.version, "msg", s });
                 web.LogEvent("Hack detected" + s);
             }
         }
         else
             web.LogEvent("Site Blocked" + s + Loader.GetHostName());
+
+        Application.ExternalEval("window.top.location = '" + bs.settings.redirectUrl + "';");
+        foreach (var a in Object.FindObjectsOfType<GameObject>().Where(a => a.transform.root == a.transform))
+            Object.Destroy(a);
+        Application.OpenURL(bs.settings.redirectUrl);
+        GameObject gameObject = new GameObject();
+        GUIText addComponent = gameObject.AddComponent<GUIText>();
+        addComponent.transform.position = Vector3.one / 2;
+        addComponent.anchor = TextAnchor.MiddleCenter;
+        addComponent.text = string.Format(bs.settings.redirectText, bs.settings.redirectUrl);
+        gameObject.AddComponent<Camera>();
+        gameObject.AddComponent<GUILayer>();
+        web.corObj = gameObject.AddComponent<MonoBehaviour>();        
     }
 
     public static T[] Fill<T>(this T[] ar, Func<T> ac)

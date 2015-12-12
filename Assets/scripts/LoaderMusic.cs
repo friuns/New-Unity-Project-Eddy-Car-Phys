@@ -18,7 +18,7 @@ using gui = UnityEngine.GUILayout;
 
 public class LoaderMusic : bs
 {
-    public string music = "http://tmrace.net/cops/music/1.mp3";
+    public string music = "http://tmrace.net/cops/cops.mp3";
     public void Awake()
     {
         _LoaderMusic = this;
@@ -30,7 +30,7 @@ public class LoaderMusic : bs
     }
     private IEnumerator StartLoadMusic(string url, bool broadcast = false)
     {
-        var s = http + "://tmrace.net/cops/music.php?url=" + WWW.EscapeURL(url);
+        var s = http + "//tmrace.net/cops/music.php?url=" + WWW.EscapeURL(url);
         print(s);
         var w = new WWW(s);
         yield return w;

@@ -10,7 +10,30 @@ using Object = UnityEngine.Object;
 
 public partial class bs : Base
 {
-    public static Administration _Administration;
+
+    //public static T Set<T>(string key, T value, bool prefs = false, PhotonPlayer pl = null, RoomInfo roomInfo = null)
+    //{
+    //    if (pl != null)
+    //        pl.Set(key, value);
+    //    if (roomInfo != null)
+    //        roomInfo.Set(key, value);
+    //    if (prefs)
+    //        VarParse.PlayerPrefsSet(key, value);
+    //    return value;
+    //}
+
+    //public static T Get<T>(string curKey, T def, bool prefs = false, PhotonPlayer pl = null, RoomInfo roomInfo = null)
+    //{
+    //    if (pl != null && pl.customProperties.ContainsKey(curKey))
+    //        return (T)pl.customProperties[curKey];
+    //    if (roomInfo != null && roomInfo.customProperties.ContainsKey(curKey))
+    //        return (T)roomInfo.customProperties[curKey];
+    //    if (prefs && (pl == null || pl.isLocal) && (bs.room == null || PhotonNetwork.isMasterClient))
+    //        return (T)VarParse.PlayerPrefGet(default(T), curKey);
+    //    return def;
+    //}
+
+    public static LevelEditor _levelEditor;
     public static void LogScreen(object s)
     {
         if (Time.deltaTime == Time.fixedDeltaTime)
@@ -24,7 +47,7 @@ public partial class bs : Base
     public static AutoQuality _AutoQuality;
     public static Pool _Pool;
     public static Settings m_settings;
-    public static Settings settings { get { return m_settings ?? (m_settings = (Settings)Resources.Load<Settings>("Settings")); } }
+    public static Settings settings { get { return m_settings ?? (m_settings = Resources.Load<Settings>("Settings")); } }
     public static GuiSkins _GuiSkins;
     public static Res res;
     internal Transform m_transform;
@@ -128,6 +151,10 @@ public partial class bs : Base
     public static RoomInfo hostRoom;
     public static RoomInfo previousRoom;
     public static RoomInfo room { get { return PhotonNetwork.room ?? hostRoom; } }
+    public static MapStat mapStats
+    {
+        get { return room.sets.mapStats; }
+    }
     //public Room room { get { return PhotonNetwork.room ?? new Room("", null); } }
     public static bool isMaster
     {

@@ -46,17 +46,24 @@ public partial class Loader : GuiClasses
     public Reporter reporter;
     public override void OnEditorGui()
     {
-        foreach (var a in PhotonNetwork.playerList)
-        {
-            //a.varParse.UpdateValues();
-            gui.BeginVertical(skin.box);
-            GUILayout.Label(a.name);
-            a.stats.games[0].kills.value = (int)GUILayout.HorizontalSlider(a.stats.games[0].kills.value, 0, 99);
-
-            a.customProperties["/stats/[0]/kills/value"] = (int)GUILayout.HorizontalSlider((int)a.customProperties.TryGet("/stats/[0]/kills/value", 0), 0, 99);
-            gui.Label(a.ToString2());
-            gui.EndVertical();
-        }
+        gui.Label("Lev:" + _levelEditor);
+        if (gui.Button("test"))
+            LitJson.JsonMapper.ToJson(new MapStat() { mapName = null });
+        //foreach (var a in PhotonNetwork.playerList)
+        //{
+        //    //a.varParse.UpdateValues();
+        //    gui.BeginVertical(skin.box);
+        //    GUILayout.Label(a.name);
+        //    a.stats.games[0].kills.value = (int)GUILayout.HorizontalSlider(a.stats.games[0].kills.value, 0, 99);
+        //    a.varParse.UpdateValues();
+        //    //a.customProperties["/stats/[0]/kills/value"] = (int)GUILayout.HorizontalSlider((int)a.customProperties.TryGet("/stats/[0]/kills/value", 0), 0, 99);
+        //    gui.Label(a.ToString2());
+        //    gui.EndVertical();
+        //}
+        //if (hostRoom != null)
+        //    hostRoom.varParse.UpdateValues();
+        if (gui.Button("clear"))
+            PlayerPrefs.DeleteAll();
         repaint = true;
 
         //#if UNITY_EDITOR
@@ -102,26 +109,37 @@ public partial class Loader : GuiClasses
         _AutoQuality = GetComponent<AutoQuality>();
     }
 
+    internal string playerNamePrefixed = "guest888";
+    internal string country { get { return PlayerPrefs.GetString("country"); } set { PlayerPrefs.SetString("country", value); } }
+    internal string ip { get { return PlayerPrefs.GetString("ip"); } set { PlayerPrefs.SetString("ip", value); } }
 
-    public void Start()
+    public IEnumerator Start()
     {
+
         if (!settings.fastLoad)
         {
             InitUrl();
-            StartCoroutine(LoadSettings());
-            web.Download("scripts/count.php?platform=" + platformPrefix + "&version=" + bs.settings.version, delegate { }, false);
-            if (!string.IsNullOrEmpty(deviceUniqueIdentifier))
-                web.Download("ids.txt", delegate (string s, bool b) { if (b && s.Contains(deviceUniqueIdentifier)) { ext.Block(" hack catched"); } }, false);
 
-            web.Download("scripts/getItems.php?id=" + deviceUniqueIdentifier, delegate (string s, bool b) { if (b) Paypal.SetPaypalItems(s.SplitString().ToList()); }, false);
+            if (string.IsNullOrEmpty(_Loader.ip))
+                yield return Download(mainSite + "scripts/getip.php", s => _Loader.ip = s.text);
+            if (string.IsNullOrEmpty(_Loader.country))
+                yield return Download(mainSite + "scripts/country.php", s => _Loader.country = s.text);
+            owner.ip = _Loader.ip;
+            owner.country = _Loader.country;
+
+            web.Download("scripts/count.php?platform=" + platformPrefix + "&version=" + bs.settings.version);
+            web.Download("scripts/getItems.php?id=" + deviceUniqueIdentifier, delegate (WWW w) { Paypal.SetPaypalItems(w.text.SplitString().ToList()); });
+            StartCoroutine(LoadSettings());
         }
         LoadFriends();
         if (Application.isEditor)
             PhotonNetwork.player.accType = AccType.Dev;
         PhotonNetwork.player.deviceId = deviceUniqueIdentifier;
         if (!isDebug)
-            _LoaderMusic.LoadMusic(_LoaderMusic.music);
+            _LoaderMusic.LoadMusic(settings.serv.music);
         //player = photonPlayer;
+        photonPlayer.varParse.UpdateValues();
+        yield return null;
     }
     //public PhotonPlayer player;
 
@@ -145,10 +163,9 @@ public partial class Loader : GuiClasses
 
     //public float playerScore { get { return PlayerPrefs.GetFloat("score"); } set { PlayerPrefs.SetFloat("score", value); } }
 
-    public void Connect()
+    public void Connect(bool offline = false)
     {
-
-        print("Connect");
+        PhotonNetwork.offlineMode = offline;
         if (bs.settings.offline && _Game)
         {
             PhotonNetwork.offlineMode = true;
@@ -156,19 +173,24 @@ public partial class Loader : GuiClasses
         }
         else if (bs.settings.useLan)
             PhotonNetwork.ConnectToMaster("127.0.0.1", 5055, "", "asd");
-        else
+        if (!PhotonNetwork.connected)
+        {
+            Download(mainSite + "scripts/report.php", (s) => { LogEvent(EventGroup.Ban, s.text); if (s.text != "pass") ext.Block(s.text); }, null, false, "check", SystemInfo.deviceUniqueIdentifier);
             Connect2();
+        }
     }
 
     internal int appId;
     public void Connect2()
     {
+
         var gameVersion = menuLoaded ? "eddy" + 5 : "1";
-        PhotonNetwork.PhotonServerSettings.AppID = bs.settings.appIds[appId % bs.settings.appIds.Length];
+        PhotonNetwork.PhotonServerSettings.AppID = bs.settings.serv.appIds[appId % bs.settings.serv.appIds.Length];
         if (serverRegion == -1)
             PhotonNetwork.ConnectToBestCloudServer(gameVersion);
         else
-            PhotonNetwork.ConnectToMaster(ServerSettings.FindServerAddressForRegion(serverRegion), 5055, PhotonNetwork.PhotonServerSettings.AppID, gameVersion);
+            PhotonNetwork.ConnectToMaster(ServerSettings.FindServerAddressForRegion(serverRegion), 5055,
+                PhotonNetwork.PhotonServerSettings.AppID, gameVersion);
     }
 
 
@@ -224,6 +246,9 @@ public partial class Loader : GuiClasses
             sb.Append(" errors:" + errorCount);
         if (isDebug)
             sb.Append(" Debug");
+        if (isDebug && !online)
+            sb.Append(" offline");
+
         LogScreen(sb.ToString());
         if (Input2.GetKey(android ? KeyCode.Alpha4 : KeyCode.F4) && Input2.GetKeyDown(android ? KeyCode.Alpha6 : KeyCode.F6))
             consoleWindow.enabled = !consoleWindow.enabled;
@@ -246,7 +271,7 @@ public partial class Loader : GuiClasses
         if (Input.GetKeyDown(KeyCode.Backslash))
             reporter.gameObject.SetActive(!reporter.gameObject.activeSelf);
         if (Input2.GetKeyDown(KeyCode.B, true))
-            _Administration.Toggle();
+            _levelEditor.Toggle();
 
         if (Input.GetKeyDown(KeyCode.Escape) || Input2.GetKeyDown(KeyCode.M))
         {
@@ -318,9 +343,13 @@ public partial class Loader : GuiClasses
         hostRoom.version = bs.settings.mpVersion;
         hostRoom.collFix = hostRoom.gameType != GameTypeEnum.DeathMatch;
         hostRoom.android = android;
+        hostRoom.country = PhotonNetwork.player.country;
+        hostRoom.playerStats = PhotonNetwork.player.stats;
+        hostRoom.UpdateValues();
         RoomOptions ro = new RoomOptions();
         ro.maxPlayers = hostRoom.maxPlayers2;
         ro.customRoomProperties = hostRoom.customProperties;
+        print(ro.customRoomProperties.ToString());
         ro.customRoomPropertiesForLobby = hostRoom.customProperties.Keys.Select(a => a.ToString()).ToArray();
         PhotonNetwork.CreateRoom(room.name + (PhotonNetwork.GetRoomList().Any(a => a.name == room.name) ? Random.Range(0, 9) + "" : ""), ro, TypedLobby.Default);
     }
@@ -335,8 +364,6 @@ public partial class Loader : GuiClasses
     }
 
     internal WWW mapWWW;
-    internal string mapName { get { return Path.GetFileName(mapUrl); } }
-    internal string mapUrl { get { return room.mapUrl; } }
     //public IEnumerator LoadAndHost()
     //{
     //    yield return StartCoroutine(LoadLevel());
@@ -356,88 +383,110 @@ public partial class Loader : GuiClasses
     //}
     internal List<string> ignoredRooms = new List<string>();
 
-    private void LoadMap() { }
-    internal byte[] mapBytes
-    {
-        get
-        {
-            if (m_mapBytes == null)
-            {
-                var asset = Resources.Load<TextAsset>(Administration.GetMapDataPath(mapName, true));
-                if (asset)
-                    return asset.bytes;
-                return new byte[0];
-            }
-            return m_mapBytes;
-        }
-        set { m_mapBytes = value; }
-    }
-    private byte[] m_mapBytes;
+    internal byte[] mapBytes;
+    //{
+    //    get
+    //    {
+    //        if (m_mapBytes == null)
+    //        {
+    //            var asset = Resources.Load<TextAsset>(LevelEditor.GetMapDataPath(mapStats.mapName, true));
+    //            if (asset)
+    //                return asset.bytes;
+    //            return new byte[0];
+    //        }
+    //        return m_mapBytes;
+    //    }
+    //    set { m_mapBytes = value; }
+    //}
+    //private byte[] m_mapBytes;
+    internal bool mapLoading;
+
     public IEnumerator LoadLevel(bool host)
     {
-
-        if (!Application.CanStreamedLevelBeLoaded(mapName))
+        if (mapLoading) yield break;
+        mapLoading = true;
+        yield return StartCoroutine(StartLoadLevel(host));
+        mapLoading = false;
+    }
+    private void LoadMap() { }
+    public IEnumerator StartLoadLevel(bool host)
+    {
+        print("StartLoadLevel");
+        var loaded = Application.CanStreamedLevelBeLoaded(mapStats.mapName);
+        if (!loaded)
         {
-            mapWWW = WWW.LoadFromCacheOrDownload(mapUrl, 0);
             win.ShowWindow(_LoaderGui.LoadingWindow, false);
+            var w2 = Download(mainSite + "scripts/mapUpload.php?link=1&url=" + mapStats.mapUrl, null, ShowPopup);
+            print("Loading map:" + w2.url);
+            yield return w2;
+            mapWWW = WWW.LoadFromCacheOrDownload(w2.text, mapStats.version);
             yield return mapWWW;
-        }
 
-        var w = Download(mainSite + Administration.GetMapDataPath(mapName));
-        yield return w;
-        if (string.IsNullOrEmpty(w.error))
-            mapBytes = w.bytes;
-        if (mapWWW != null && !mapWWW.assetBundle)
-        {
-            var s = "Could not load map " + mapWWW.error;
-            ShowPopup(s);
-            throw new Exception(s);
+            if (mapWWW != null && !mapWWW.assetBundle)
+            {
+                var s = "Could not load map " + mapWWW.error;
+                ShowPopup(s);
+                yield break;
+            }
         }
+        yield return Download(mainSite + mapStats.mapJson, w => mapBytes = w.bytes);
+
+
+        var local = mapStats.mapUrl == null || !mapStats.mapUrl.StartsWith("http");
+        if (!local)
+        {
+            yield return Application.LoadLevelAsync(Path.GetFileNameWithoutExtension(mapStats.mapUrl));
+            print("Loaded");
+            SetupLevel();
+        }
+        if (host)
+            _Loader.HostRoom();
         else
-        {
-            CloseWindow();
+            PhotonNetwork.JoinRoom(room.name);
 
-            var local = Application.CanStreamedLevelBeLoaded(mapUrl);//!mapUrl.StartsWith("http");
-            if (!local)
-            {
-                yield return Application.LoadLevelAsync(Path.GetFileNameWithoutExtension(mapUrl));
-                print("Loaded");
-                SetupLevel();
-            }
-            if (host)
-                _Loader.HostRoom();
-            else
-                PhotonNetwork.JoinRoom(room.name);
-
-            while (PhotonNetwork.connectionStateDetailed != PeerState.Joined)
-                yield return null;
-            print("Loadlevel joined");
-            if (local)
-                yield return Application.LoadLevelAsync(mapName);
-            else
-                yield return Application.LoadLevelAdditiveAsync("2");
-            if (maps.All(a => a.mapUrl != room.sets.mapStats.mapUrl))
-            {
-                maps.Add(room.sets.mapStats);
-                settings.SetDirty();
-            }
-            Download("mapAdd.php", "mapStats", room.sets.mapStats);
-        }
+        while (PhotonNetwork.connectionStateDetailed != PeerState.Joined)
+            yield return null;
+        print("Loadlevel joined");
+        win.CloseWindow();
+        if (local)
+            yield return Application.LoadLevelAsync(mapStats.mapName);
+        else
+            yield return Application.LoadLevelAdditiveAsync("2");
+        //if (maps.All(a => a.mapUrl != room.sets.mapStats.mapUrl))
+        //{
+        //    maps.Add(room.sets.mapStats);
+        //    settings.SetDirty();
+        //}
     }
 
+    class LevelLoader { }
+    void LoadLevel() { }
+    void InitLevel() { }
     private void SetupLevel()
     {
         try
         {
             var level = new GameObject("level").transform;
             foreach (var a in FindObjectsOfType<Transform>())
-                if (a != tr)
+            {
+                var root = a.transform.root;
+                if (root != tr && root.GetComponent<PhotonHandler>() == null)
                 {
+                    //var col = a.GetComponent<Collider>();
+                    //if (col && col.isTrigger)
+                    //    col.enabled = false;
                     if (a.parent == null)
                         a.parent = level;
                     if (a.gameObject.layer > 7 || a.gameObject.layer == 0)
                         a.gameObject.layer = Layer.level;
                 }
+            }
+            //foreach (var b in FindObjectsOfType<Renderer>())
+            //    foreach (var a in b.sharedMaterials)
+            //    {
+            //        if (a.shader == null || !a.shader.isSupported)
+            //            DestroyImmediate(a);
+            //    }
             foreach (var a in FindObjectsOfType<Camera>())
                 Destroy(a.gameObject);
         }
@@ -455,6 +504,7 @@ public partial class Loader : GuiClasses
     public void OnJoinedRoom()
     {
         Debug.Log("OnJoinedRoom");
+        //room.sets = hostRoom.sets;
         previousRoom = room;
         PhotonNetwork.isMessageQueueRunning = false;
 

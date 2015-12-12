@@ -63,7 +63,7 @@ public class AutoQuality : GuiClasses
     public bool? m_autoFullScreen;
     public bool autoFullScreen { get { return (m_autoFullScreen ?? (m_autoFullScreen = PlayerPrefsGetBool("autoFullScreen", true)).Value); } set { PlayerPrefsSetBool("autoFullScreen", (m_autoFullScreen = value).Value); } }
 
-    public float drawDistance { get { return m_drawDistance ?? (m_drawDistance = PlayerPrefs.GetFloat("drawDistance", 600)).Value; } set { PlayerPrefs.SetFloat("drawDistance", (m_drawDistance = value).Value); } }
+    public float drawDistance { get { return m_drawDistance ?? (m_drawDistance = PlayerPrefs.GetFloat("drawDistance2", 6000)).Value; } set { PlayerPrefs.SetFloat("drawDistance2", (m_drawDistance = value).Value); } }
     public float? m_drawDistance;
 
     public bool? m_particles;
@@ -141,7 +141,7 @@ public class AutoQuality : GuiClasses
             Screen.SetResolution(Screen.currentResolution.width * 2, Screen.currentResolution.height * 2, true);
         gui.EndHorizontal();
 
-        var horizontalSlider = HorizontalSlider("Draw Distance", drawDistance, 0, 1000);
+        var horizontalSlider = HorizontalSlider("Draw Distance", drawDistance, 0, 6000);
         if (horizontalSlider != drawDistance)
             updated = true;
 
@@ -190,7 +190,7 @@ public class AutoQuality : GuiClasses
         skidmarks = !lowestQuality;
         particles = !lowestQuality;
         motionblur = !(android ? lowQuality : lowestQuality);
-        drawDistance = 600;
+        //drawDistance = 600;
         UpdateQuality();
 
     }

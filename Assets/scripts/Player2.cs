@@ -94,11 +94,12 @@ public partial class Player
     public Spawn GetSpawnStartPos()
     {
 
-        if ((GameType.race || isDebug) && _Game.raceSpawns.Count > 0)
+        if ((GameType.race || isDebug) && _Game.raceSpawns.Any())
         {
             IEnumerable<PhotonPlayer> photonPlayers = PhotonNetwork.playerList.Where(a => a != null);
             List<PhotonPlayer> players = photonPlayers.OrderBy(a => a.ID).ToList();
-            return _Game.raceSpawns[players.IndexOf(photonView.owner) % _Game.raceSpawns.Count];
+            var raceSpawns = _Game.raceSpawns.ToArray();
+            return raceSpawns[players.IndexOf(photonView.owner) % raceSpawns.Length];
         }
         if (_Game.spawns.Count > 0)
         {

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using LitJson;
 using gui = UnityEngine.GUILayout;
 using UnityEngine;
 
@@ -42,8 +43,17 @@ public partial class GameGui : GuiClasses
     {
         SetupWindow(500, 700);
 
+        gui.BeginHorizontal();
         gui.Label(bs.room.name);
-
+        gui.FlexibleSpace();
+        gui.Label(mapStats.mapName);
+        gui.FlexibleSpace();
+        if ((!mapStats.liked || isDebug) && Button("like"))
+        {
+            mapStats.liked = true;
+            Download("scripts/scoreMap.php", null, null, false, "mapStats", JsonMapper.ToJson(mapStats));
+        }
+        gui.EndHorizontal();
         if (online && _Game.finnish && _Game.playerWin)
             gui.Box("***<size=30>" + _Game.playerWin.pv.playerName + " Best Score</size>***");
         if (GameType.teamGame && _Game.teamWin != null)
@@ -95,11 +105,12 @@ public partial class GameGui : GuiClasses
             }
 
         }
-    
+
         gui.EndHorizontal();
         if (ButtonLeft("Game Info"))
             ShowWindow(() => _Loader.RoomInfo(room));
     }
+
 
     private void GetValue(Func<Player, string> ac, string title)
     {
@@ -115,7 +126,7 @@ public partial class GameGui : GuiClasses
     {
         win.SetupWindow(400, 600);
         if (Button("Administration"))
-            _Administration.ShowAdmin();
+            _levelEditor.ShowAdmin();
         if (_Game.editControls)
         {
             win.style = GUIStyle.none;
@@ -135,26 +146,14 @@ public partial class GameGui : GuiClasses
         if (android && Button("Edit Controls"))
             _Game.editControls = true;
 
-        if (Button("ScoreBoard"))
+        if (Button("Players"))
             _Game.ShowScoreBoard();
         //if (GameType.weapons && Button("Ally"))
         //win.ShowWindow(_Game.AllyWindow);
-        if ((Time.time - LoaderMusic.broadCastTime > 5 || isDebug) && Button("Play music"))
-        {
-            string musicUrl = "";
-            ShowWindow(delegate
-            {
-                musicUrl = TextArea("mp3 url:", musicUrl);
-                if (Button("Load"))
-                {
-                    _LoaderMusic.LoadMusic(musicUrl, true);
-                    CloseWindow();
-                }
-            });
-        }
+
         if (Button("Settings"))
             ShowWindow(_Loader.SettingsWindow);
-            
+
         if (Button(GameType.tdm ? "Change Team" : "Self Destruct"))
         {
             if (!_Player.dead)
@@ -170,11 +169,6 @@ public partial class GameGui : GuiClasses
             _Game.LeaveRoom();
     }
 
-
-    private static void Divider()
-    {
-        GUILayout.Label("", "Divider");
-    }
 
     public void PlayerInfo(Player pl)
     {
@@ -197,6 +191,8 @@ public partial class GameGui : GuiClasses
 
             if (!Player.votedKick && Button("Vote Kick"))
                 Player.VoteKick(pl);
+            if (!reported && Button("Report"))
+                SendReportWindow(pl);
             gui.EndHorizontal();
             gui.BeginHorizontal();
             pl.owner.mute = Toggle(pl.owner.mute, "Mute");
@@ -216,5 +212,28 @@ public partial class GameGui : GuiClasses
 
         });
 
+    }
+    private void SendReportWindow(Player a)
+    {
+        string reportText = "";
+
+        ShowWindow(delegate
+        {
+            win.addflexibleSpace = false;
+            Label("reason");
+            reportText = gui.TextArea(reportText, gui.ExpandHeight(true));
+            if (Button("report"))
+            {
+                SendReport(a, reportText);
+                win.CloseWindow();
+            }
+        });
+        reported = true;
+    }
+    private bool reported;
+    public void SendReport(Player pl, string msg)
+    {
+        if (!string.IsNullOrEmpty(pl.owner.deviceId))
+            Download("scripts/report.php", Debug.Log, Debug.LogWarning, false, new object[] { "ip", pl.owner.ip, "devid", pl.owner.deviceId, "plname", pl.owner.name, "version", settings.version, "msg", msg });
     }
 }

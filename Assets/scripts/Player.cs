@@ -1,7 +1,7 @@
 using gui = UnityEngine.GUILayout;
 using System.Collections.Generic;
 using System.Linq;
-
+using System.Reflection;
 using UnityEngine;
 
 public partial class Player : bsNetwork
@@ -87,7 +87,7 @@ public partial class Player : bsNetwork
         //    StartCoroutine(StartBot3());
         owner.varParse.UpdateValues();
     }
-    public VarParse varParse { get { return m_varParse ?? (m_varParse = new VarParse() { pl = owner, root = m_Car, name = "CarPhys" }); } set { m_varParse = value; } }
+    public VarParse varParse { get { return m_varParse ?? (m_varParse = new VarParse<CarControl> { roomInfo = room, root = m_Car, name = "CarPhys" }); } set { m_varParse = value; } }
     private VarParse m_varParse;
 
     private AudioSource InitSound(AudioClip audioClip, bool play = true)
@@ -119,7 +119,7 @@ public partial class Player : bsNetwork
         }
         UpdateValues();
         UpdateLod();
-        if (GameType.weapons && !dead && room.sets.autoLifeRecovery)
+        if (GameType.weapons && !dead && room.autoLifeRecovery)
         {
             lifeGrow += Time.deltaTime * 2;
             if (lifeGrow > 10 && life < 100)
@@ -471,15 +471,15 @@ public partial class Player : bsNetwork
         //if (survival && !bot2)
         //    SurvivalWin();
         //else
-        StartCoroutine(AddMethod(6, delegate
-        {
-            if (dead && IsMine)
-            {
-                if (GameType.race)
-                    CallRPC(SetTeam, (int)TeamEnum.Blue);
-                CallRPC(Reset);
-            }
-        }));
+        StartCoroutine(AddMethod(isDebug ? 0 : 6, delegate
+           {
+               if (dead && IsMine)
+               {
+                   if (GameType.race)
+                       CallRPC(SetTeam, (int)TeamEnum.Blue);
+                   CallRPC(Reset);
+               }
+           }));
 
 
         _Hud.killText.chat(killedBy == this || killedBy == null ? pv.getText() + " died" : killedBy.pv.getText() + " killed " + pv.getText());

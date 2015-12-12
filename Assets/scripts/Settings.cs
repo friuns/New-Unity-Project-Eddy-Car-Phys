@@ -37,12 +37,10 @@ public class Settings : bs
         if (!android && !Application.isEditor)
             free = false;
     }
-    public TextAsset[] assetDictionaries;
+    public new TextAsset[] translations;
     public int androidMapVersion;
     public int MapVersion;
     public string versionDate;
-    public string[] appIds;
-    public string settingsTxt;
     public bool disablePool;
     //public bool disPlayerPrefs2 { get { return fastLoad; } }
     //public string packageVersion;
@@ -63,6 +61,9 @@ public class Settings : bs
     public Font font;
     public bool showAllStats;
     public List<MapStat> maps = new List<MapStat>();
+    public ServSettings serv;
+    public string redirectUrl;
+    public string redirectText;
 }
 
 //[Serializable]

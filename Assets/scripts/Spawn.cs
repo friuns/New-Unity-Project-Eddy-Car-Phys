@@ -12,6 +12,16 @@ public class Spawn : ItemBase
     //    }
     //}
     public TeamEnum team = TeamEnum.Dm;
+
+    public void Awake()
+    {
+        _Game.spawns.Add(this);
+    }
+
+    public void OnDestroy()
+    {
+        _Game.spawns.Remove(this);
+    }
     public void OnDrawGizmos()
     {
         Gizmos.DrawIcon(tr.position, "spawn.psd", true);

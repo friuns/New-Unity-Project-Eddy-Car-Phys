@@ -100,10 +100,10 @@ public partial class Administration : GuiClasses
         hover = null;
         {
             RaycastHit h;
-            if (Physics.Raycast(ray, out h, 99999, 1 << Layer.dragger) && (isMaster || isDebug))
+            if (Physics.Raycast(ray, out h, 99999, 1 << Layer.dragger) && isMaster)
                 hover = h.transform.GetComponent<Dragger>();
         }
-        if (!(isMaster || isDebug))
+        if (!isMaster)
             curTool = ToolType.Select;
         var mouse0 = Input.GetMouseButton(0);
         var mouse1 = Input.GetMouseButton(1);

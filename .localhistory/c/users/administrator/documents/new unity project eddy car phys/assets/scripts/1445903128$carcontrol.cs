@@ -1,6 +1,6 @@
 using System.Collections;
 using UnityEngine;
-[Field(recursive = true)]
+
 public class CarControl : bs
 {
     internal Player pl;

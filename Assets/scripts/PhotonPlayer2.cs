@@ -9,11 +9,15 @@ using UnityEngine;
 
 
 public enum AccType { Guest, User, Mod, Dev }
-[Field(recursive = true, save = true)]
+[FieldAtr(recursive = true, save = true)]
 public class PlayerStats
 {
     public Gts[] games = new Gts[Enum.GetValues(typeof(GameTypeEnum)).Length];
-    public Gts pursuitRace, pursuit, DeathMatch, TDM;
+    public Gts pursuitRace;
+    public Gts pursuit;
+    public Gts DeathMatch;
+    public Gts TDM;
+
     public PlayerStats()
     {
         pursuit = games[(int)GameTypeEnum.pursuit] = new Gts();
@@ -21,7 +25,7 @@ public class PlayerStats
         DeathMatch = games[(int)GameTypeEnum.DeathMatch] = new Gts();
         TDM = games[(int)GameTypeEnum.TDM] = new Gts();
     }
-    [Field(save = false)]
+    [FieldAtr(save = false, recursive = true)]
     public Gts curGame = new Gts();
     public int moneyFound;
     public int reports;
@@ -30,10 +34,13 @@ public class PlayerStats
 }
 public partial class PhotonPlayer
 {
+    private class PlayerInfo { }
     public string url { get { return (string)customProperties.TryGet("url", ""); } set { Set("url", value); } }
     public bool mute;
 
     public string deviceId { get { return (string)customProperties.TryGet("deviceId", ""); } set { Set("deviceId", value); } }
+    public string ip { get { return (string)customProperties.TryGet("ip", ""); } set { Set("ip", value); } }
+    public string country { get { return (string)customProperties.TryGet("country", ""); } set { Set("country", value); } }
     public CarItem carSet { get { return bs.settings.cars[stats.carIndex]; } }
     private Hashtable propertiesToSet = new Hashtable();
     public AccType accType { get { return (AccType)customProperties.TryGet("accType", 0); } set { Set("accType", (int)value); } }
@@ -43,25 +50,29 @@ public partial class PhotonPlayer
 
     public void Set(string key, object value)
     {
-        if (/*isLocal && */!Equals(value, customProperties[key]))
+        if ( /*isLocal && */!Equals(value, customProperties[key]))
+        {
             customProperties[key] = propertiesToSet[key] = value;
+            //Update();
+        }
     }
 
-    public VarParse varParse { get { return m_varParse ?? (m_varParse = new VarParse() { pl = this, root = stats }); } set { m_varParse = value; } }
+    public VarParse varParse { get { return m_varParse ?? (m_varParse = new VarParse<PlayerStats>() { pl = this, root = stats }); } set { m_varParse = value; } }
     private VarParse m_varParse;
     public PlayerStats stats = new PlayerStats();
     public Gts curGame { get { return stats.curGame; } }
     public void Update()
     {
-        if (propertiesToSet.Count > 0)
+        if (propertiesToSet.Count > 0 && PhotonNetwork.connected)
         {
             SetCustomProperties(propertiesToSet);
             propertiesToSet.Clear();
         }
+        //varParse.UpdateValues();
     }
     public void DrawStats()
     {
-        bs.win.windowTitle = "Statics for " + name;
+        bs.win.windowTitle = "Statics for " + name;        
         GuiClasses.Label("ID".PadRight(20) + ID);
         if (GuiClasses.Button("ShowADvStats"))
             bs.win.ShowWindow(delegate { gui.Label(ToString2()); });

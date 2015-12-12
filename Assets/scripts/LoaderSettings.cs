@@ -26,6 +26,7 @@ public partial class Loader
     public float voiceChatVolume { get { return m_voiceChatVolume ?? (m_voiceChatVolume = PlayerPrefs.GetFloat("voiceChatVolume", .3f)).Value; } set { PlayerPrefs.SetFloat("voiceChatVolume", (m_voiceChatVolume = value).Value); } }
     public float? m_voiceChatVolume;
 
+
     //public float volume { get { return m_volume ?? (m_volume = PlayerPrefs.GetFloat("volume", 600)).Value; } set { PlayerPrefs.SetFloat("volume", (m_volume = value).Value); } }
     //public float? m_volume;
 
@@ -88,10 +89,10 @@ public partial class Loader
             _Loader.FullScreen();
         if (Button("Quality Settings"))
             win.ShowWindow(_AutoQuality.DrawSetQuality);
-        if (Button("Console"))
+        if (Button("Error log"))
             ConsoleWindow();
         //if (android)
-        //    _Loader.controls = (Contr)Toolbar((int)_Loader.controls, new[] { "mouse", "Keys", "Accelerometr" }, true);
+        //_Loader.controls = (Contr)Toolbar((int)_Loader.controls, new[] { "mouse", "Keys", "Accelerometr" }, true);
         if (Button("Setup Keyboard"))
             win.ShowWindow(KeyboardSetup);
 
@@ -120,7 +121,7 @@ public partial class Loader
             serverRegion = toolbar;
         }
 
-        curDict = Toolbar(curDict, bs.settings.assetDictionaries.Select(a => a.name).ToArray(), true, false, 99, -1, true, "Language");
+        curDict = Toolbar(curDict, bs.settings.translations.Select(a => a.name).ToArray(), true, false, 99, -1, true, "Language");
     }
 
     protected void KeyboardSetup()

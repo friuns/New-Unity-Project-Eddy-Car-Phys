@@ -1,10 +1,12 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Reflection;
 using System.Text;
+using LitJson;
 using gui = UnityEngine.GUILayout;
 using UnityEngine;
 using Hashtable = ExitGames.Client.Photon.Hashtable;
@@ -12,9 +14,11 @@ using Random = UnityEngine.Random;
 class LoaderGUI { }
 public partial class Menu
 {
+    private void Unload() { }
     public void Start2()
     {
-        if (_Loader.mapWWW != null)
+
+        if (_Loader.mapWWW != null && !Application.isEditor)
         {
             print("Unloading assets");
             if (_Loader.mapWWW.assetBundle != null)
@@ -25,7 +29,7 @@ public partial class Menu
         //if (previousRoom == null && isDebug)
         //    previousRoom = new RoomInfo("", null);
 
-        if (photonPlayer.curGame.timePlayed > 0)
+        if (photonPlayer != null && photonPlayer.curGame.GetMoney() > 0)
         {
             var g = photonPlayer.curGame;
             win.ShowWindow(delegate
@@ -36,6 +40,7 @@ public partial class Menu
                 if (GuiClasses.Button("Claim"))
                 {
                     photonPlayer.stats.games[(int)previousRoom.gameType].Add(g);
+                    photonPlayer.varParse.UpdateValues();
                     GuiClasses.CloseWindow();
                 }
             });
@@ -47,10 +52,9 @@ public partial class Menu
     }
 
     public string search = "";
-    private void ServerList() { }
-    private const string _nameGametypePlayers = "Name                        GameType       Players V";
+    private const string _nameGametypePlayers = "Name                        GameType       Players from V";
     public static string serverTable = CreateTable(_nameGametypePlayers);
-    public void SelectServer()
+    public void ServerList()
     {
         SetupWindow(600, 600);
 
@@ -65,7 +69,7 @@ public partial class Menu
 
             GUI.enabled = ValidateRoom(a);
             StringBuilder sb = new StringBuilder();
-            sb.AppendFormat(serverTable, a.name, a.gameType, a.playerCount + "/" + a.maxPlayers, a.version != bs.settings.mpVersion ? a.version.ToString() : "");
+            sb.AppendFormat(serverTable, a.name, a.gameType, a.playerCount + "/" + a.maxPlayers, a.country, a.version != bs.settings.mpVersion ? a.version.ToString() : "");
             //if (a.version != bs.settings.mpVersion)
             //    sb.Append("             (version:" + a.version + ")");
             if (gui.Button(sb.ToString(), skin.label))
@@ -88,13 +92,24 @@ public partial class Menu
     {
         return a.version <= bs.settings.mpVersion;
     }
-    public void HostGame()
+    public void ShowHostRoomWindow()
     {
         //_Loader.ResetSettings();
         hostRoom = new RoomInfo(bs._Loader.playerName + "'s room", null);
-        ShowWindow(HostGameWindow);
+        Download("scripts/getMaps.php", delegate (WWW w)
+        {
+
+            var maps = LitJson.JsonMapper.ToObject<MapStat[]>(w.text);
+            bs.settings.maps = maps.ToList();
+            //foreach (var map in maps)
+            //    if (!bs.settings.maps.Any(a => a.mapName == map.mapName))
+            //        bs.settings.maps.Add(map);
+            room.sets.mapStats = bs.settings.maps[0];
+        });
+        ShowWindow(HostRoomWindow);
     }
-    public void HostGameWindow()
+    private void HostGameWindow() { }
+    public void HostRoomWindow()
     {
         SetupWindow(800, 600);
         gui.BeginHorizontal();
@@ -102,7 +117,7 @@ public partial class Menu
         bool startButton = Button("Start");
 
         if (Button("Load Map from url"))
-            ShowWindow(LoadMapFromUrl);
+            LoadMapFromUrl();
 
         Label("Room Name:");
         room.name = gui.TextField(room.name, 20);
@@ -117,9 +132,10 @@ public partial class Menu
         room.maxPlayers2 = (int)HorizontalSlider("Max Players", room.maxPlayers2, 1, 30, startButton);
         gui.EndVertical();
         gui.BeginVertical(skin.box);
+        gui.Label(mapStats.texture);
         Label(Tr("Select Map"));
-        foreach (var a in _Loader.maps)
-            if (GlowButton(a.mapName, a == room.sets.mapStats))
+        foreach (var a in bs.settings.maps)
+            if ((a.hidden == 0 || isDebug) && GlowButton(a.mapName, a == room.sets.mapStats))
                 room.sets.mapStats = a;
         gui.EndVertical();
         gui.EndHorizontal();
@@ -131,21 +147,36 @@ public partial class Menu
 
     private void LoadMapFromUrl()
     {
-        Label("Enter url where unity3d map stored");
-        mapUrlTextField = TextField("map url", mapUrlTextField);
-        if (Button("Load"))
+        string mapUrlTextField = "http://cdn2.mwogame.com/mwowebrbk/Levels/BattleMap_30.unity3d";
+        ShowWindow(delegate
         {
-            room.sets.mapStats = new MapStat { mapUrl = mapUrlTextField, mapName = Path.GetFileNameWithoutExtension(mapUrlTextField), newMap = true };
-            _Loader.StartCoroutine(_Loader.LoadLevel(true));
-        }
-
+            Label("Enter url where unity3d map stored");
+            mapUrlTextField = TextArea("map url", mapUrlTextField);
+            if (Button("Load"))
+            {
+                room.sets.mapStats = new MapStat
+                {
+                    mapUrl = mapUrlTextField,
+                    mapName = Path.GetFileNameWithoutExtension(mapUrlTextField),
+                    newMap = true
+                };
+                _Loader.StartCoroutine(_Loader.LoadLevel(true));
+            }
+        });
     }
     public void LoadingWindow()
     {
         //win.save = false;
-        Label(_Loader.mapName + " Loading " + Mathf.Round(_Loader.mapWWW.progress * 100) + "%");
+        win.showBackButton = false;
+        Label(mapStats.mapName + " Loading " + (_Loader.mapWWW != null ? Mathf.Round(_Loader.mapWWW.progress * 100) + "%" : ""));
+        if (BackButtonLeft())
+        {
+            StopAllCoroutines();
+            _Loader.mapLoading = false;
+            Back();
+        }
     }
-    private string mapUrlTextField = "";
+
 }
 
 
@@ -183,6 +214,6 @@ public partial class Menu
 //    }
 //    if (gui.Button("MultiPlayer"))
 //    {            
-//        ShowWindow(SelectServer);
+//        ShowWindow(ServerList);
 //    }
 //}

@@ -7,7 +7,7 @@ using System.Text;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-public partial class Administration
+public partial class LevelEditor
 {
     public void OnGUI()
     {
@@ -15,14 +15,17 @@ public partial class Administration
         GUI.depth = -1;
         gui.BeginHorizontal("", skin.GetStyle("flow background"));
         {
-            if (Button("Exit"))
+            if (Button("Resume"))
                 CloseAdmin();
             if (isMaster)
             {
                 if (Button("Load"))
                     win.ShowWindow(LoadMapWindow);
                 if (Button("Save"))
+                {
+                    makeMapIcon = MakeMapIcon();
                     win.ShowWindow(SaveMapWindow);
+                }
                 if (Button("Clear"))
                     ClearMap();
             }
@@ -68,6 +71,11 @@ public partial class Administration
                     {
                         prefab = a;
                         curTool = (ToolType)strings.Count;
+                        if (Event.current.button == 1)
+                        {
+                            Create(_Player.pos, _Player.rot);
+                            CloseWindow();
+                        }
                     }
                 }
             }
@@ -81,7 +89,7 @@ public partial class Administration
                 prefab = null;
             gui.EndVertical();
         }
-        if (BeginVertical("Server settings"))
+        if (BeginVertical("Server Mutators"))
         {
             if (Button("Car Physics"))
                 ShowCarPhys();
@@ -89,20 +97,32 @@ public partial class Administration
             room.matchTime = HorizontalSlider("Match Time", room.matchTime, 1, 5f * 60f, false, true);
             //BeginVertical("Level Settings");
             room.lifeDef = HorizontalSlider("Life", room.lifeDef, 30, 300);
-            room.gravity = -HorizontalSlider("gravity", -bs.room.gravity, 9.81f, 20f);
+            room.gravity = -HorizontalSlider("gravity", -bs.room.gravity, 1f, 20f);
             room.gameSpeed = HorizontalSlider("Game Speed", room.gameSpeed, 1, 2);
             room.disableRockets = Toggle(room.disableRockets, "Disable Rockets");
             room.disableMachineGun = Toggle(room.disableMachineGun, "Disable MachineGun");
             room.disableVoiceChat = Toggle(room.disableVoiceChat, "Disable Voice Chat");
-            room.varParse.UpdateValues();
+            //room.varParse.UpdateValues();
 
-            //room.autoLifeRecovery = Toggle(room.autoLifeRecovery, "Auto Repair");
+            room.autoLifeRecovery = Toggle(room.autoLifeRecovery, "Auto Repair");
             if (GameType.race)
                 room.noKillScore = Toggle(room.noKillScore, "No Kill Score");
 
             if (isDebug)
                 bs.room.collFix = gui.Toggle(bs.room.collFix, "Coll Fix");
-
+            if ((Time.time - LoaderMusic.broadCastTime > 5 || isDebug) && Button("Play music"))
+            {
+                string musicUrl = "";
+                ShowWindow(delegate
+                {
+                    musicUrl = TextArea("mp3 url:", musicUrl);
+                    if (Button("Load"))
+                    {
+                        _LoaderMusic.LoadMusic(musicUrl, true);
+                        CloseWindow();
+                    }
+                });
+            }
             gui.EndVertical();
         }
     }
@@ -111,8 +131,8 @@ public partial class Administration
         ShowWindow(delegate
         {
             win.windowSkin = settings.unitySkin;
-            room.varParse.filter = GuiClasses.TextField("Search:", _Player.varParse.filter);
-            room.varParse.UpdateValues();
+            _Player.varParse.filter = GuiClasses.TextField("Search:", _Player.varParse.filter);
+            _Player.varParse.UpdateValues();
         });
         //room.Set("dsad","sdads");
     }

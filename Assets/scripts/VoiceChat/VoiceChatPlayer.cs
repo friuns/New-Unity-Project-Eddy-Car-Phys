@@ -39,6 +39,7 @@ public class VoiceChatPlayer : VoiceChatBase
         //audio.volume = 3;
         //audio.bypassEffects = audio.bypassReverbZones = audio.bypassListenerEffects = true;
         audio.loop = true;
+        //audio.enabled = false;
         audio.minDistance = 10;
         audio.clip = AudioClip.Create("VoiceChat", size, 1, VoiceChatSettings.Instance.Frequency, true, false);
         audio.priority = 0;

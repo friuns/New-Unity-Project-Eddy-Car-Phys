@@ -42,7 +42,6 @@ public partial class Menu : GuiClasses
         foreach (var a in Camera.allCameras)
             if (mainCam != a && a.gameObject.tag == "MainCamera")
                 a.gameObject.SetActive(false);
-        
     }
 
 
@@ -50,9 +49,10 @@ public partial class Menu : GuiClasses
 
     public void Start()
     {
-        bs._Loader.RefreshAds();
-        bs._Loader.menuLoaded = true;
-
+        _Loader.RefreshAds();
+        _Loader.menuLoaded = true;
+        //PhotonNetwork.offlineMode = false;
+        _Loader.Connect();
         enterNickField.Text = bs._Loader.playerName;
 
 
@@ -84,10 +84,11 @@ public partial class Menu : GuiClasses
         shop.click += shop_click;
         StartCoroutine(AddMethod(() => Loader.settingsLoaded, delegate
         {
-            if (bs._Loader.linksButtons.Length == 0) return;
-            var d = Random.Range(0, bs._Loader.linksButtons.Length / 2) * 2;
-            getOnAndroid.text = bs._Loader.linksButtons[d];
-            buttonLink = bs._Loader.linksButtons[d + 1];
+            var linksButtons = bs.settings.serv.curDev.linksButtons;
+            if (linksButtons.Length == 0) return;
+            var d = Random.Range(0, linksButtons.Length / 2) * 2;
+            getOnAndroid.text = linksButtons[d];
+            buttonLink = linksButtons[d + 1];
         }));
         money.GetComponent<UnityEngine.UI.Button>().onClick.AddListener(() => win.ShowWindow(() => PhotonNetwork.player.DrawStats()));
         Start2();
@@ -125,7 +126,7 @@ public partial class Menu : GuiClasses
 
     void hostGame_click()
     {
-        _LoaderGui.HostGame();
+        _LoaderGui.ShowHostRoomWindow();
     }
 
     private void FindRoom() { }
@@ -138,6 +139,7 @@ public partial class Menu : GuiClasses
         if (android && !Application.isEditor)
             orderByDescending = orderByDescending.OrderBy(a => a.maxPlayers);
         RoomInfo firstOrDefault = orderByDescending.FirstOrDefault(a => a.gameType == (GameType));
+
         return firstOrDefault;
     }
 
@@ -156,18 +158,13 @@ public partial class Menu : GuiClasses
 
     void browseServers_click()
     {
-        win.ShowWindow(_LoaderGui.SelectServer);
+        win.ShowWindow(_LoaderGui.ServerList);
     }
 
     void multiplayer_click()
     {
-        if (PhotonNetwork.connected)
-            OnConnectedToPhoton();
-        else
-        {
-            bs._Loader.appId = 0;
-            bs._Loader.Connect();
-        }
+        _Loader.Connect();
+        SetScreen(multiplayerScene);
     }
     public void OnJoinedLobby()
     {
@@ -175,7 +172,7 @@ public partial class Menu : GuiClasses
     }
     public void OnConnectedToPhoton()
     {
-        SetScreen(multiplayerScene);
+
     }
 
 
@@ -197,16 +194,17 @@ public partial class Menu : GuiClasses
 
     void singlePlayer_click()
     {
-
-        PhotonNetwork.offlineMode = true;
-        hostRoom.gameType = GameTypeEnum.DeathMatch;
-        bs._Loader.HostRoom();
+        if (!PhotonNetwork.insideLobby)
+            _Loader.Connect(true);
+        //hostRoom.gameType = GameTypeEnum.DeathMatch;
+        ShowHostRoomWindow();
     }
 
 
     void join_click()
     {
         var r = GetRoom(doru.Button.clicked == joinRace ? GameTypeEnum.pursuitRace : doru.Button.clicked == joinPursuit ? GameTypeEnum.pursuit : doru.Button.clicked == joinTDM ? GameTypeEnum.TDM : GameTypeEnum.DeathMatch);
+        //r.varParse.UpdateValues();
         hostRoom = r;
         _Loader.StartCoroutine(_Loader.LoadLevel(false));
     }
@@ -263,9 +261,9 @@ public partial class Menu : GuiClasses
         if (screen == mainMenu)
         {
             PhotonNetwork.playerName = bs._Loader.playerName;
-            PhotonNetwork.offlineMode = false;
-            if (PhotonNetwork.connected)
-                PhotonNetwork.Disconnect();
+            //PhotonNetwork.offlineMode = false;
+            //if (PhotonNetwork.connected)
+            //    PhotonNetwork.Disconnect();
         }
         current = screen;
     }

@@ -71,7 +71,6 @@ public class CarWheel : MonoBehaviour
 
 	public float getForwardPeakSlip ()
 	{
-
 		return m_wheel.forwardFriction.extremumSlip * m_forwardFrictionPeak.x;
 	}
 
@@ -118,15 +117,12 @@ public class CarWheel : MonoBehaviour
 	{
 		return m_wheel;
 	}
-    void Awake()
-    {
-        m_wheel = GetComponent<WheelCollider>() as WheelCollider;
-    }
+	
 	void  Start ()
 	{
 		// Acceso al WheelCollider
 	
-		
+		m_wheel = GetComponent<WheelCollider> () as WheelCollider;
 		m_rigidbody = m_wheel.attachedRigidbody;
 	
 		// En modo optimizado, recalcular los datos cotosos ahora. 

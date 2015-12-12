@@ -34,12 +34,11 @@ public partial class Game : GuiClasses
             room.gameType = settings.gameType;
             _Loader.Connect();
         }
+        else
+            Destroy(GameObject.Find("_test"));
         Awake3();
     }
 
-    public void OnValidate()
-    {
-    }
     private void InitValues()
     {
         _Game = this;
@@ -47,11 +46,11 @@ public partial class Game : GuiClasses
     }
 
     internal List<Spawn> spawns = new List<Spawn>();
-    internal List<Spawn> raceSpawns = new List<Spawn>();
-    public Spawn[] GetSpawns()
-    {
-        return FindObjectsOfType<Spawn>();
-    }
+    internal IEnumerable<Spawn> raceSpawns { get { return spawns.Where(a => a.team == TeamEnum.Race); } }
+    //public Spawn[] GetSpawns()
+    //{
+    //    return FindObjectsOfType<Spawn>();
+    //}
 
 
     public List<Player> botPlayers = new List<Player>();
@@ -81,8 +80,9 @@ public partial class Game : GuiClasses
         //    _Hud.centerText("Escape cops as long as possible");
         _AutoQuality.OnLevelWasLoaded2();
 
-        PhotonNetwork.player.url = _Loader.url;
-        OnPhotonCustomRoomPropertiesChanged();
+        PhotonNetwork.player.url = Loader.url2.Host;
+        //OnPhotonCustomRoomPropertiesChanged();
+        //room.varParse.UpdateValues();
         fieldOfView = CameraMain.fieldOfView;
         if (isMaster)
         {
@@ -146,7 +146,7 @@ public partial class Game : GuiClasses
     {
         stateChangeTime = Time.time;
         _Game.gameState = (GameState)state;
-        CheckPoint.lastCheckPoint = null;
+        CheckPoint.lastCheckPoint.Clear();
         print("SetGameState " + _Game.gameState);
         if (_Game.gameState == GameState.started)
             PlayOneShotGui(res.start);
@@ -254,8 +254,8 @@ public partial class Game : GuiClasses
     float fieldOfView;
     public void Update()
     {
-
-        CameraMain.fieldOfView = Mathf.Min(CameraMain.fieldOfView * 1.5f, Mathf.Lerp(CameraMain.fieldOfView, fieldOfView + Mathf.Max(0, _Player.avrVel) * .2f + Mathf.Max(0, _Player.velm - _Player.avrVel) * .5f, Time.deltaTime * 3));
+        if (CameraMain != null)
+            CameraMain.fieldOfView = Mathf.Min(CameraMain.fieldOfView * 1.5f, Mathf.Lerp(CameraMain.fieldOfView, fieldOfView + Mathf.Max(0, _Player.avrVel) * .2f + Mathf.Max(0, _Player.velm - _Player.avrVel) * .5f, Time.deltaTime * 3));
 
         if (online)
         {
@@ -315,16 +315,23 @@ public partial class Game : GuiClasses
     {
         var hash = playerAndUpdatedProps[1] as Hashtable;
         foreach (var a in hash)
-        {
-            VarParse.OnValueRead((string)a.Key, a.Value);
-        }
+            VarParse.SetValue((string)a.Key, a.Value);
     }
-    public void OnPhotonCustomRoomPropertiesChanged()
+    public void OnPhotonCustomRoomPropertiesChanged(Hashtable hash)
     {
-        room.varParse.UpdateValues();
+        Debug.Log("OnPhotonCustomRoomPropertiesChanged");
+        //room.varParse.UpdateValues();        
+        //var hash = playerAndUpdatedProps[1] as Hashtable;
+        foreach (var a in hash)
+            if (a.Key is string)
+                VarParse.SetValue((string)a.Key, a.Value);
+        //else
+        //    Debug.LogError("wtf " + a.Key);
+
         Time.timeScale = room.gameSpeed;
         Time.fixedDeltaTime = 0.02f / Time.timeScale;
         Physics.gravity = new Vector3(0, room.gravity, 0);
+
     }
     [RPC]
     public void SetTimeCount(float time)

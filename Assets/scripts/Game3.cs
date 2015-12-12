@@ -19,8 +19,8 @@ public partial class Game
     private void InitSpawnsStart3()
     {
 
-        if ((isMaster || room.version < 164))
-            _Administration.LoadMap(new MemoryStream(_Loader.mapBytes));
+        if ((isMaster || room.version < 164) && _Loader.mapBytes != null)
+            _levelEditor.LoadMap(new MemoryStream(_Loader.mapBytes));
 
         Bounds bounds = this.bounds;
         Debug.DrawLine(bounds.min, bounds.max, Color.red, 10);
@@ -34,7 +34,7 @@ public partial class Game
         if (items == null || items.Count == 0)
             items = FindObjectsOfType<Item>().OrderBy(a => Random.value).ToList();
 
-        if (isMaster && (GameType.weapons || isDebug))
+        if (isMaster && GameType.weapons)
         {
             var c = 0;
             for (int i = 1; i <= 4; i++)
@@ -52,8 +52,8 @@ public partial class Game
     }
     public void RefreshSpawns()
     {
-        spawns = GetSpawns().ToList();
-        raceSpawns = spawns.Where(a => a.team == TeamEnum.Race).ToList();
+        //spawns = GetSpawns().ToList();
+        //raceSpawns = 
     }
     //private void SpawnGen(Bounds bounds)
     //{

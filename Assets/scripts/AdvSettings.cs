@@ -20,7 +20,7 @@
 //public class AdvSettings : GuiClasses
 //{
 
-//    public class Field : Attribute
+//    public class FieldAtr : Attribute
 //    {
 //        public Type[] ignore;
 //        public Type[] include;
@@ -48,7 +48,7 @@
 //        foreach (MemberInfo memberInfo in cur.GetType().GetProperties().Cast<MemberInfo>().Concat(cur.GetType().GetFields()))
 //            if (memberInfo is FieldInfo || memberInfo is PropertyInfo)
 //            {
-//                var atr = memberInfo.GetCustomAttributes(false).FirstOrDefault() as Field;
+//                var atr = memberInfo.GetCustomAttributes(false).FirstOrDefault() as FieldAtr;
 //                if (atr != null)
 //                {
 //                    var custom = true;//;
@@ -110,7 +110,7 @@
 //            return;
 //        }
 //        var obj = memberInfo.GetCustomAttributes(true).FirstOrDefault();
-//        var txt = (bs.name != "!Game" ? bs.name + " " : "") + ((Field)obj).name + ": ";
+//        var txt = (bs.name != "!Game" ? bs.name + " " : "") + ((FieldAtr)obj).name + ": ";
 //        _ChatGui.Chat(txt + value);
 //        customValuesText[txt] = value;
 //        Type t = memberInfo is FieldInfo ? ((FieldInfo)memberInfo).FieldType : ((PropertyInfo)memberInfo).PropertyType;
